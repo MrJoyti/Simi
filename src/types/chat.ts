@@ -15,9 +15,22 @@ export type ChatPattern =
   | 'blueprint'
   | 'nocturne';
 
-export type PrivacyVisibility = 'only_me' | 'buddies' | 'buddies_of_buddies' | 'public';
+export type RelationshipState =
+  | 'NONE'
+  | 'OUTGOING_PENDING'
+  | 'INCOMING_PENDING'
+  | 'FRIENDS'
+  | 'BLOCKED_BY_ME'
+  | 'BLOCKED_BY_OTHER';
 
-export type BuddyRequestState = 'none' | 'requestSent' | 'incomingRequest' | 'buddy' | 'declined';
+export type BuddyRequestState =
+  | 'none'
+  | 'requestSent'
+  | 'incomingRequest'
+  | 'buddy'
+  | 'declined'
+  | 'blocked_by_me'
+  | 'blocked_by_other';
 
 export interface BuddyRequest {
   id: string;
@@ -54,7 +67,7 @@ export interface UserProfile {
   badge?: string;
   soundEnabled: boolean;
   createdAt: number;
-  lastSeen?: number;
+  lastSeen?: number | any;
   buddyIds?: string[]; // Array of added buddy user IDs
   lastReadTimestamps?: Record<string, number>; // roomId -> last-read timestamp
 }

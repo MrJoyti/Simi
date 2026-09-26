@@ -3,18 +3,24 @@ import { UserProfile } from '../types/chat';
 /**
  * Evaluates whether a viewer can access/view a target user's profile details.
  * Rule:
- * - Public: anyone can view
+ * - Public: anyone can view (unless blocked)
  * - Buddies: viewer must be an accepted buddy
  * - Buddies of Buddies: viewer is a buddy or shares at least 1 mutual buddy
  * - Only Me: only target user can view self
+ * - Blocked: if either user has blocked the other, view is denied
  */
 export function canViewProfile(
   targetUser: UserProfile | undefined | null,
   viewerUser: UserProfile | undefined | null,
-  activeUsers: UserProfile[] = []
+  allUsers: UserProfile[] = []
 ): boolean {
   if (!targetUser || !viewerUser) return false;
   if (viewerUser.id === targetUser.id) return true;
+
+  // Blocked users cannot view profile
+  const viewerBlocked = (viewerUser.blockedUserIds || []).includes(targetUser.id);
+  const targetBlocked = (targetUser.blockedUserIds || []).includes(viewerUser.id);
+  if (viewerBlocked || targetBlocked) return false;
 
   const visibility = targetUser.privacyVisibility || 'buddies';
 
@@ -74,6 +80,11 @@ export function isBuddyUser(
 ): boolean {
   if (!targetUser || !viewerUser) return false;
   if (targetUser.id === viewerUser.id) return true;
+
+  const viewerBlocked = (viewerUser.blockedUserIds || []).includes(targetUser.id);
+  const targetBlocked = (targetUser.blockedUserIds || []).includes(viewerUser.id);
+  if (viewerBlocked || targetBlocked) return false;
+
   return (
     (targetUser.buddyIds || []).includes(viewerUser.id) ||
     (viewerUser.buddyIds || []).includes(targetUser.id)
@@ -89,4 +100,3 @@ export function canViewEmailAndId(
 ): boolean {
   return isBuddyUser(targetUser, viewerUser);
 }
-

@@ -13,6 +13,7 @@ import {
   ScheduledMessage,
   BuddyRequest,
   BuddyRequestState,
+  RelationshipState,
 } from '../types/chat';
 import { sounds } from '../utils/sound';
 import { THEMES } from '../utils/theme';
@@ -31,8 +32,13 @@ import {
   updateDoc,
   where,
   or,
+  writeBatch,
+  arrayUnion,
+  arrayRemove,
+  serverTimestamp,
 } from 'firebase/firestore';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { normalizeTimestamp } from '../utils/presence';
 import {
   isNotificationSupported,
   getNotificationPermission,
@@ -74,17 +80,20 @@ interface ChatContextType {
   removeBuddy: (targetUserId: string) => Promise<void>;
   isBuddy: (userId: string) => boolean;
 
-  // --- Buddy Request System ---
+  // --- Buddy Request & Relationship System ---
   buddyRequests: BuddyRequest[];
   getBuddyRequestState: (targetUserId: string) => BuddyRequestState;
+  getRelationship: (targetUserId: string) => RelationshipState;
   sendBuddyRequest: (targetUser: UserProfile) => Promise<void>;
-  acceptBuddyRequest: (requestId: string, fromUserId: string) => Promise<void>;
-  declineBuddyRequest: (requestId: string) => Promise<void>;
-  cancelBuddyRequest: (requestId: string) => Promise<void>;
+  acceptBuddyRequest: (requestId: string, fromUserId?: string) => Promise<void>;
+  declineBuddyRequest: (requestIdOrTargetId: string) => Promise<void>;
+  cancelBuddyRequest: (requestIdOrTargetId: string) => Promise<void>;
 
   // --- Block System ---
   isBlocked: (targetUserId: string) => boolean;
+  isBlockedBy: (targetUserId: string) => boolean;
   toggleBlockUser: (targetUserId: string) => Promise<void>;
+  presenceTick: number;
 
   // --- Pin & Favorite Room System ---
   togglePinRoom: (roomId: string) => Promise<void>;
@@ -332,10 +341,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const sendPresenceUpdate = async (status: 'online' | 'idle' | 'offline') => {
       const targetStatus = currentUser.showActiveStatus === false ? 'offline' : status;
       const now = Date.now();
-      // Avoid redundant Firestore writes if status hasn't changed and written recently (< 15s)
+      // Throttle rapid repeated identical writes (12 seconds minimum unless going offline)
       if (
         targetStatus === currentPresenceStatusRef.current &&
-        now - lastPresenceWriteRef.current < 15000 &&
+        now - lastPresenceWriteRef.current < 12000 &&
         targetStatus !== 'offline'
       ) {
         return;
@@ -348,10 +357,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const userRef = doc(db, 'users', userId);
         await updateDoc(userRef, {
           status: targetStatus,
-          lastSeen: now,
+          lastSeen: serverTimestamp(),
         });
       } catch {
-        // offline or silent fail
+        // silent fail
       }
     };
 
@@ -419,13 +428,13 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       currentPresenceStatusRef.current = 'offline';
     };
 
-    // Unload / pagehide event: best-effort mark offline
+    // Unload / pagehide event: best-effort mark offline with server timestamp
     const handleBeforeUnload = () => {
       try {
         const userRef = doc(db, 'users', userId);
         updateDoc(userRef, {
           status: 'offline',
-          lastSeen: Date.now(),
+          lastSeen: serverTimestamp(),
         }).catch(() => {});
       } catch {
         // ignore
@@ -559,7 +568,16 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => unsub();
   }, [currentUser?.id]);
 
-  // Client-side background trigger tick: checks if any scheduled message is due
+  // Dynamic presence refresh ticker (re-evaluates relative last-seen every 15s across app)
+  const [presenceTick, setPresenceTick] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPresenceTick((prev) => prev + 1);
+    }, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Client-side background trigger tick: delivers due scheduled messages directly into Firestore
   useEffect(() => {
     const interval = setInterval(async () => {
       if (!currentUser?.id) return;
@@ -567,38 +585,49 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         (m) => m.status === 'scheduled' && m.scheduledFor <= Date.now()
       );
       if (due.length > 0) {
-        try {
-          await fetch('/api/triggers/process-scheduled', { method: 'POST' });
-        } catch {
-          // fallback to client-side trigger directly
-          for (const msg of due) {
-            try {
-              const msgDocRef = doc(db, 'rooms', msg.roomId, 'messages', msg.id);
-              await setDoc(msgDocRef, cleanForFirestore({
-                id: msg.id,
-                roomId: msg.roomId,
-                senderId: msg.senderId,
-                senderName: msg.senderName,
-                senderAvatar: msg.senderAvatar,
-                senderCustomAvatar: msg.senderCustomAvatar,
-                senderBadge: msg.senderBadge,
-                senderTheme: msg.senderTheme,
-                type: msg.type,
-                content: msg.content,
-                attachmentUrl: msg.attachmentUrl,
-                audioDuration: msg.audioDuration,
-                reactions: {},
-                replyTo: msg.replyTo,
-                timestamp: Date.now(),
-                readBy: [msg.senderId],
-              }));
-              await updateDoc(doc(db, 'scheduledMessages', msg.id), {
-                status: 'sent',
-                sentAt: Date.now(),
-              });
-            } catch (e) {
-              console.warn('Fallback send error:', e);
-            }
+        for (const msg of due) {
+          try {
+            const msgDocRef = doc(db, 'rooms', msg.roomId, 'messages', msg.id);
+            await setDoc(msgDocRef, cleanForFirestore({
+              id: msg.id,
+              roomId: msg.roomId,
+              senderId: msg.senderId,
+              senderName: msg.senderName,
+              senderAvatar: msg.senderAvatar,
+              senderCustomAvatar: msg.senderCustomAvatar,
+              senderBadge: msg.senderBadge,
+              senderTheme: msg.senderTheme,
+              type: msg.type,
+              content: msg.content,
+              attachmentUrl: msg.attachmentUrl,
+              audioDuration: msg.audioDuration,
+              reactions: {},
+              replyTo: msg.replyTo,
+              timestamp: Date.now(),
+              readBy: [msg.senderId],
+            }));
+
+            const roomDocRef = doc(db, 'rooms', msg.roomId);
+            const previewText =
+              msg.type === 'sticker'
+                ? '🎨 Sticker'
+                : msg.type === 'voice'
+                ? '🎙️ Voice note'
+                : msg.type === 'image'
+                ? '📷 Photo'
+                : msg.content.slice(0, 35);
+
+            await updateDoc(roomDocRef, {
+              lastMessage: previewText,
+              lastMessageTime: Date.now(),
+            }).catch(() => {});
+
+            await updateDoc(doc(db, 'scheduledMessages', msg.id), {
+              status: 'sent',
+              sentAt: Date.now(),
+            });
+          } catch (e) {
+            console.warn('Scheduled message client delivery error:', e);
           }
         }
       }
@@ -652,6 +681,16 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     async (targetBuddy: UserProfile, callType: CallType = 'video') => {
       const user = currentUserRef.current;
       if (!user) return;
+
+      if ((user.blockedUserIds || []).includes(targetBuddy.id)) {
+        alert('Cannot call a user you have blocked.');
+        return;
+      }
+      if ((targetBuddy.blockedUserIds || []).includes(user.id)) {
+        alert('This user is not available for calls.');
+        return;
+      }
+
       sounds.playSend();
 
       const callId = 'call_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
@@ -1332,35 +1371,87 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [currentUser?.id]);
 
-  // Buddy Request Handlers
+  const isProcessingRequestRef = useRef<Set<string>>(new Set());
+
+  // Check if target user has blocked current user
+  const isBlockedBy = useCallback(
+    (targetUserId: string): boolean => {
+      const targetUser = activeUsers.find((u) => u.id === targetUserId);
+      if (!targetUser || !currentUser) return false;
+      return (targetUser.blockedUserIds || []).includes(currentUser.id);
+    },
+    [activeUsers, currentUser]
+  );
+
+  // Canonical Relationship State between current user and target user
+  const getRelationship = useCallback(
+    (targetUserId: string): RelationshipState => {
+      const user = currentUserRef.current;
+      if (!user || user.id === targetUserId) return 'NONE';
+
+      // 1. Blocking priority
+      if ((user.blockedUserIds || []).includes(targetUserId)) {
+        return 'BLOCKED_BY_ME';
+      }
+      const targetUser = activeUsers.find((u) => u.id === targetUserId);
+      if (targetUser && (targetUser.blockedUserIds || []).includes(user.id)) {
+        return 'BLOCKED_BY_OTHER';
+      }
+
+      // 2. Mutual / direct buddy
+      if ((user.buddyIds || []).includes(targetUserId)) {
+        return 'FRIENDS';
+      }
+
+      // 3. Pending requests
+      const pendingOutgoing = buddyRequests.find(
+        (r) => r.fromUserId === user.id && r.toUserId === targetUserId && r.status === 'pending'
+      );
+      if (pendingOutgoing) return 'OUTGOING_PENDING';
+
+      const pendingIncoming = buddyRequests.find(
+        (r) => r.fromUserId === targetUserId && r.toUserId === user.id && r.status === 'pending'
+      );
+      if (pendingIncoming) return 'INCOMING_PENDING';
+
+      return 'NONE';
+    },
+    [activeUsers, buddyRequests]
+  );
+
+  // Backward-compatible adapter for UI components
   const getBuddyRequestState = useCallback(
     (targetUserId: string): BuddyRequestState => {
-      const user = currentUserRef.current;
-      if (!user) return 'none';
-      if ((user.buddyIds || []).includes(targetUserId)) return 'buddy';
-
-      const activeReq = buddyRequests.find(
-        (r) =>
-          (r.fromUserId === user.id && r.toUserId === targetUserId) ||
-          (r.fromUserId === targetUserId && r.toUserId === user.id)
-      );
-
-      if (!activeReq) return 'none';
-      if (activeReq.status === 'accepted') return 'buddy';
-      if (activeReq.status === 'declined') return 'declined';
-
-      if (activeReq.fromUserId === user.id) return 'requestSent';
-      if (activeReq.toUserId === user.id) return 'incomingRequest';
-
+      const rel = getRelationship(targetUserId);
+      if (rel === 'FRIENDS') return 'buddy';
+      if (rel === 'OUTGOING_PENDING') return 'requestSent';
+      if (rel === 'INCOMING_PENDING') return 'incomingRequest';
+      if (rel === 'BLOCKED_BY_ME') return 'blocked_by_me';
+      if (rel === 'BLOCKED_BY_OTHER') return 'blocked_by_other';
       return 'none';
     },
-    [buddyRequests]
+    [getRelationship]
   );
 
   const sendBuddyRequest = useCallback(
     async (targetUser: UserProfile) => {
       const user = currentUserRef.current;
       if (!user || user.id === targetUser.id) return;
+
+      if ((user.blockedUserIds || []).includes(targetUser.id)) {
+        alert('You have blocked this user.');
+        return;
+      }
+      if ((targetUser.blockedUserIds || []).includes(user.id)) {
+        alert('This user is not available.');
+        return;
+      }
+      if ((user.buddyIds || []).includes(targetUser.id)) {
+        return; // Already buddies
+      }
+
+      if (isProcessingRequestRef.current.has(targetUser.id)) return;
+      isProcessingRequestRef.current.add(targetUser.id);
       sounds.playClick();
 
       const requestId = `${user.id}_${targetUser.id}`;
@@ -1377,13 +1468,15 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updatedAt: Date.now(),
       };
 
-      // Optimistically update local state immediately
+      // Optimistic update
       setBuddyRequests((prev) => [...prev.filter((r) => r.id !== requestId), reqDoc]);
 
       try {
         await setDoc(doc(db, 'buddyRequests', requestId), cleanForFirestore(reqDoc), { merge: true });
       } catch (e) {
         console.error('Failed to send buddy request:', e);
+      } finally {
+        isProcessingRequestRef.current.delete(targetUser.id);
       }
     },
     []
@@ -1395,42 +1488,40 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!user) return;
       sounds.playReceive();
 
-      const fromUserId = fromUserIdParam || (requestIdOrFromUserId.includes('_') ? requestIdOrFromUserId.split('_')[0] : requestIdOrFromUserId);
-      const targetReq = buddyRequests.find(
-        (r) =>
-          r.id === requestIdOrFromUserId ||
-          (r.fromUserId === fromUserId && r.toUserId === user.id)
-      );
-      const docId = targetReq ? targetReq.id : requestIdOrFromUserId.includes('_') ? requestIdOrFromUserId : `${fromUserId}_${user.id}`;
+      const fromUserId =
+        fromUserIdParam ||
+        (requestIdOrFromUserId.includes('_') ? requestIdOrFromUserId.split('_')[0] : requestIdOrFromUserId);
+      const docId = `${fromUserId}_${user.id}`;
+      const altDocId = `${user.id}_${fromUserId}`;
 
       // Optimistically update local state immediately
       setBuddyRequests((prev) =>
-        prev.map((r) => (r.id === docId || (r.fromUserId === fromUserId && r.toUserId === user.id) ? { ...r, status: 'accepted' } : r))
+        prev.filter((r) => r.id !== docId && r.id !== altDocId && r.id !== requestIdOrFromUserId)
+      );
+      setCurrentUser((prev) =>
+        prev ? { ...prev, buddyIds: Array.from(new Set([...(prev.buddyIds || []), fromUserId])) } : null
+      );
+      setActiveUsers((prev) =>
+        prev.map((u) =>
+          u.id === fromUserId
+            ? { ...u, buddyIds: Array.from(new Set([...(u.buddyIds || []), user.id])) }
+            : u
+        )
       );
 
       try {
-        await setDoc(
-          doc(db, 'buddyRequests', docId),
-          { status: 'accepted', updatedAt: Date.now() },
-          { merge: true }
-        );
-
-        const currentBuddies = user.buddyIds || [];
-        if (!currentBuddies.includes(fromUserId)) {
-          await updateProfile({ buddyIds: [...currentBuddies, fromUserId] });
-        }
-
-        const targetRef = doc(db, 'users', fromUserId);
-        const snap = await getDoc(targetRef);
-        if (snap.exists()) {
-          const targetData = snap.data() as UserProfile;
-          const targetBuddies = targetData.buddyIds || [];
-          if (!targetBuddies.includes(user.id)) {
-            await updateDoc(targetRef, {
-              buddyIds: [...targetBuddies, user.id],
-            });
-          }
-        }
+        // Atomic batch update for mutual friendship
+        const batch = writeBatch(db);
+        batch.update(doc(db, 'users', user.id), {
+          buddyIds: arrayUnion(fromUserId),
+        });
+        batch.update(doc(db, 'users', fromUserId), {
+          buddyIds: arrayUnion(user.id),
+        });
+        batch.delete(doc(db, 'buddyRequests', docId));
+        batch.delete(doc(db, 'buddyRequests', altDocId));
+        batch.delete(doc(db, 'buddyRequests', requestIdOrFromUserId));
+        await batch.commit();
 
         confetti({
           particleCount: 40,
@@ -1441,7 +1532,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Failed to accept buddy request:', e);
       }
     },
-    [buddyRequests, updateProfile]
+    []
   );
 
   const declineBuddyRequest = useCallback(
@@ -1450,30 +1541,28 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sounds.playClick();
       if (!user) return;
 
-      const targetReq = buddyRequests.find(
-        (r) =>
-          r.id === requestIdOrFromUserId ||
-          (r.fromUserId === requestIdOrFromUserId && r.toUserId === user.id) ||
-          (r.fromUserId === user.id && r.toUserId === requestIdOrFromUserId)
-      );
+      const fromUserId = requestIdOrFromUserId.includes('_')
+        ? requestIdOrFromUserId.split('_')[0]
+        : requestIdOrFromUserId;
+      const docId = `${fromUserId}_${user.id}`;
+      const altDocId = `${user.id}_${fromUserId}`;
 
-      const docId = targetReq ? targetReq.id : requestIdOrFromUserId.includes('_') ? requestIdOrFromUserId : `${requestIdOrFromUserId}_${user.id}`;
-
+      // Optimistically remove request from local state
       setBuddyRequests((prev) =>
-        prev.map((r) => (r.id === docId ? { ...r, status: 'declined' } : r))
+        prev.filter((r) => r.id !== docId && r.id !== altDocId && r.id !== requestIdOrFromUserId)
       );
 
       try {
-        await setDoc(
-          doc(db, 'buddyRequests', docId),
-          { status: 'declined', updatedAt: Date.now() },
-          { merge: true }
-        );
+        const batch = writeBatch(db);
+        batch.delete(doc(db, 'buddyRequests', docId));
+        batch.delete(doc(db, 'buddyRequests', altDocId));
+        batch.delete(doc(db, 'buddyRequests', requestIdOrFromUserId));
+        await batch.commit();
       } catch (e) {
         console.error('Failed to decline buddy request:', e);
       }
     },
-    [buddyRequests]
+    []
   );
 
   const cancelBuddyRequest = useCallback(
@@ -1482,27 +1571,28 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sounds.playClick();
       if (!user) return;
 
-      const targetReq = buddyRequests.find(
-        (r) =>
-          r.id === requestIdOrTargetId ||
-          (r.fromUserId === user.id && r.toUserId === requestIdOrTargetId) ||
-          (r.fromUserId === requestIdOrTargetId && r.toUserId === user.id)
+      const targetId = requestIdOrTargetId.includes('_')
+        ? requestIdOrTargetId.split('_')[1]
+        : requestIdOrTargetId;
+      const docId = `${user.id}_${targetId}`;
+      const altDocId = `${targetId}_${user.id}`;
+
+      // Optimistically remove request from local state
+      setBuddyRequests((prev) =>
+        prev.filter((r) => r.id !== docId && r.id !== altDocId && r.id !== requestIdOrTargetId)
       );
 
-      const docId = targetReq ? targetReq.id : requestIdOrTargetId.includes('_') ? requestIdOrTargetId : `${user.id}_${requestIdOrTargetId}`;
-
-      // Optimistically update local state immediately
-      setBuddyRequests((prev) => prev.filter((r) => r.id !== docId && r.fromUserId !== requestIdOrTargetId && r.toUserId !== requestIdOrTargetId));
-
       try {
-        await deleteDoc(doc(db, 'buddyRequests', docId)).catch(() => {});
-        const altDocId = `${requestIdOrTargetId}_${user.id}`;
-        await deleteDoc(doc(db, 'buddyRequests', altDocId)).catch(() => {});
+        const batch = writeBatch(db);
+        batch.delete(doc(db, 'buddyRequests', docId));
+        batch.delete(doc(db, 'buddyRequests', altDocId));
+        batch.delete(doc(db, 'buddyRequests', requestIdOrTargetId));
+        await batch.commit();
       } catch (e) {
         console.error('Failed to cancel buddy request:', e);
       }
     },
-    [buddyRequests]
+    []
   );
 
   // Block / Unblock User
@@ -1518,18 +1608,55 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const toggleBlockUser = useCallback(
     async (targetUserId: string) => {
       const user = currentUserRef.current;
-      if (!user) return;
+      if (!user || user.id === targetUserId) return;
       sounds.playClick();
 
       const currentBlocked = user.blockedUserIds || [];
       const isCurrentlyBlocked = currentBlocked.includes(targetUserId);
-      const updatedBlocked = isCurrentlyBlocked
-        ? currentBlocked.filter((id) => id !== targetUserId)
-        : [...currentBlocked, targetUserId];
 
-      await updateProfile({ blockedUserIds: updatedBlocked });
+      if (isCurrentlyBlocked) {
+        // Unblock
+        const updatedBlocked = currentBlocked.filter((id) => id !== targetUserId);
+        await updateProfile({ blockedUserIds: updatedBlocked });
+      } else {
+        // Block
+        const updatedBlocked = [...currentBlocked, targetUserId];
+        try {
+          const batch = writeBatch(db);
+          batch.update(doc(db, 'users', user.id), {
+            blockedUserIds: updatedBlocked,
+            buddyIds: arrayRemove(targetUserId),
+          });
+          batch.update(doc(db, 'users', targetUserId), {
+            buddyIds: arrayRemove(user.id),
+          });
+          batch.delete(doc(db, 'buddyRequests', `${user.id}_${targetUserId}`));
+          batch.delete(doc(db, 'buddyRequests', `${targetUserId}_${user.id}`));
+          await batch.commit();
+
+          // End active call if with this user
+          if (
+            activeCall &&
+            (activeCall.callerId === targetUserId || activeCall.receiverId === targetUserId)
+          ) {
+            endCall();
+          }
+
+          setCurrentUser((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  blockedUserIds: updatedBlocked,
+                  buddyIds: (prev.buddyIds || []).filter((id) => id !== targetUserId),
+                }
+              : null
+          );
+        } catch (e) {
+          console.error('Failed to block user:', e);
+        }
+      }
     },
-    [updateProfile]
+    [updateProfile, activeCall, endCall]
   );
 
   // Pin & Favorite Chat Room
@@ -1642,22 +1769,43 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const user = currentUserRef.current;
       if (!user) return;
       sounds.playClick();
+
+      // Optimistic local state update
       const updatedBuddies = (user.buddyIds || []).filter((id) => id !== targetUserId);
-      await updateProfile({ buddyIds: updatedBuddies });
+      setCurrentUser((prev) => (prev ? { ...prev, buddyIds: updatedBuddies } : null));
+      setActiveUsers((prev) =>
+        prev.map((u) =>
+          u.id === targetUserId
+            ? { ...u, buddyIds: (u.buddyIds || []).filter((id) => id !== user.id) }
+            : u
+        )
+      );
+      setBuddyRequests((prev) =>
+        prev.filter(
+          (r) =>
+            !(
+              (r.fromUserId === user.id && r.toUserId === targetUserId) ||
+              (r.fromUserId === targetUserId && r.toUserId === user.id)
+            )
+        )
+      );
 
       try {
-        const targetRef = doc(db, 'users', targetUserId);
-        const snap = await getDoc(targetRef);
-        if (snap.exists()) {
-          const targetData = snap.data() as UserProfile;
-          const targetBuddies = (targetData.buddyIds || []).filter((id) => id !== user.id);
-          await updateDoc(targetRef, { buddyIds: targetBuddies });
-        }
+        const batch = writeBatch(db);
+        batch.update(doc(db, 'users', user.id), {
+          buddyIds: arrayRemove(targetUserId),
+        });
+        batch.update(doc(db, 'users', targetUserId), {
+          buddyIds: arrayRemove(user.id),
+        });
+        batch.delete(doc(db, 'buddyRequests', `${user.id}_${targetUserId}`));
+        batch.delete(doc(db, 'buddyRequests', `${targetUserId}_${user.id}`));
+        await batch.commit();
       } catch (e) {
-        // ignore
+        console.error('Failed to remove buddy:', e);
       }
     },
-    [updateProfile]
+    []
   );
 
   const isBuddy = useCallback(
@@ -1665,16 +1813,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const user = currentUserRef.current;
       if (!user) return false;
       if (user.id === userId) return true;
-      const isDirectBuddy = (user.buddyIds || []).includes(userId);
-      const isReqBuddy = buddyRequests.some(
-        (r) =>
-          r.status === 'accepted' &&
-          ((r.fromUserId === user.id && r.toUserId === userId) ||
-            (r.fromUserId === userId && r.toUserId === user.id))
-      );
-      return isDirectBuddy || isReqBuddy;
+      if ((user.blockedUserIds || []).includes(userId)) return false;
+      return (user.buddyIds || []).includes(userId);
     },
-    [buddyRequests]
+    []
   );
 
   // Start Direct Message (DOES NOT call addBuddy!)
@@ -1682,9 +1824,21 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     async (targetUser: UserProfile) => {
       const user = currentUserRef.current;
       if (!user || user.id === targetUser.id) return;
+
+      if ((user.blockedUserIds || []).includes(targetUser.id)) {
+        alert('You have blocked this user.');
+        return;
+      }
+      if ((targetUser.blockedUserIds || []).includes(user.id)) {
+        alert('This user is not available.');
+        return;
+      }
+
       sounds.playClick();
 
-      const dmId = ['dm', user.id, targetUser.id].sort().join('-');
+      // Canonical deterministic DM room ID
+      const pair = [user.id, targetUser.id].sort();
+      const dmId = `dm_${pair[0]}_${pair[1]}`;
       const dmRoom: ChatRoom = {
         id: dmId,
         name: targetUser.name,
@@ -1830,6 +1984,23 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const user = currentUserRef.current;
       if (!user || !currentRoomId) return;
       if (!content.trim() && !attachmentUrl && type === 'text') return;
+
+      // Prevent messaging if other party has blocked or is blocked in a direct chat
+      const currentRoom = rawRooms.find((r) => r.id === currentRoomId);
+      if (currentRoom && (currentRoom.type === 'direct' || currentRoom.isDirect)) {
+        const otherId = currentRoom.participantIds?.find((id) => id !== user.id);
+        if (otherId) {
+          if ((user.blockedUserIds || []).includes(otherId)) {
+            alert('Cannot send messages to a user you have blocked.');
+            return;
+          }
+          const otherUser = activeUsers.find((u) => u.id === otherId);
+          if (otherUser && (otherUser.blockedUserIds || []).includes(user.id)) {
+            alert('You cannot send messages to this user.');
+            return;
+          }
+        }
+      }
 
       sendTyping(false);
 
@@ -2059,12 +2230,15 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isBuddy,
         buddyRequests,
         getBuddyRequestState,
+        getRelationship,
         sendBuddyRequest,
         acceptBuddyRequest,
         declineBuddyRequest,
         cancelBuddyRequest,
         isBlocked,
+        isBlockedBy,
         toggleBlockUser,
+        presenceTick,
         togglePinRoom,
         toggleFavoriteRoom,
         isRoomPinned,

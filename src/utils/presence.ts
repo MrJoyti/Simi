@@ -12,6 +12,25 @@ export interface PresenceInfo {
 }
 
 /**
+ * Normalizes any timestamp representation (number, Firestore Timestamp, Date, ISO string) into numeric milliseconds.
+ * Prevents NaN bugs from clock skew or Firestore Timestamp objects.
+ */
+export function normalizeTimestamp(val: any): number {
+  if (!val) return 0;
+  if (typeof val === 'number') return val;
+  if (typeof val.toMillis === 'function') return val.toMillis();
+  if (typeof val.toDate === 'function') return val.toDate().getTime();
+  if (typeof val.seconds === 'number') {
+    return val.seconds * 1000 + Math.floor((val.nanoseconds || 0) / 1000000);
+  }
+  if (typeof val === 'string') {
+    const parsed = Date.parse(val);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
+}
+
+/**
  * Checks if a viewer is allowed to access/view a target user's stories, active status, and profile info
  * based on targetUser.privacyVisibility ('only_me' | 'buddies' | 'buddies_of_buddies' | 'public').
  */
@@ -23,6 +42,10 @@ export function canViewerAccessUserContent(
   if (!targetUser) return false;
   if (!viewerUser) return false;
   if (targetUser.id === viewerUser.id) return true; // Owner can always view own details
+
+  // Blocking check
+  if ((viewerUser.blockedUserIds || []).includes(targetUser.id)) return false;
+  if ((targetUser.blockedUserIds || []).includes(viewerUser.id)) return false;
 
   const visibility: PrivacyVisibility = targetUser.privacyVisibility || 'buddies';
 
@@ -69,11 +92,11 @@ export function canViewerAccessUserContent(
 
 /**
  * Calculates a clean relative "Last seen ..." string for offline users.
- * Strictly avoids awkward phrasing like "Last seen at Last seen..." or "Last seen at recently".
  */
-export function formatLastSeenAt(timestamp?: number): string {
+export function formatLastSeenAt(timestampInput?: any): string {
+  const timestamp = normalizeTimestamp(timestampInput);
   if (!timestamp || timestamp <= 0) {
-    return 'Last seen unavailable';
+    return 'Last seen recently';
   }
 
   const now = new Date();
@@ -118,7 +141,8 @@ export function formatLastSeenAt(timestamp?: number): string {
 /**
  * Calculates a compact short label for tight UI spaces (e.g. sidebars or member lists).
  */
-export function formatLastSeenShort(timestamp?: number): string {
+export function formatLastSeenShort(timestampInput?: any): string {
+  const timestamp = normalizeTimestamp(timestampInput);
   if (!timestamp || timestamp <= 0) return 'Offline';
   const now = Date.now();
   const diffMs = Math.max(0, now - timestamp);
@@ -155,8 +179,8 @@ export function getUserPresence(
       isIdle: false,
       label: 'Offline',
       shortLabel: 'Offline',
-      lastSeenAt: 'Last seen unavailable',
-      formattedLastSeen: 'Last seen unavailable',
+      lastSeenAt: 'Last seen recently',
+      formattedLastSeen: 'Last seen recently',
       dotClass: 'bg-slate-400',
     };
   }
@@ -216,13 +240,13 @@ export function getUserPresence(
   }
 
   const now = Date.now();
-  const lastSeen = user.lastSeen || 0;
+  const lastSeen = normalizeTimestamp(user.lastSeen);
   const diffMs = Math.max(0, now - lastSeen);
   const formattedLastSeen = formatLastSeenAt(lastSeen);
   const shortLabel = formatLastSeenShort(lastSeen);
 
-  // Online freshness threshold: user.status === 'online' AND lastSeen within 75 seconds (~3 heartbeats)
-  if (user.status === 'online' && diffMs <= 75000) {
+  // Online freshness threshold: user.status === 'online' AND lastSeen within 90 seconds (~3.5 heartbeats)
+  if (user.status === 'online' && diffMs <= 90000) {
     return {
       state: 'online',
       isOnline: true,
@@ -236,13 +260,13 @@ export function getUserPresence(
   }
 
   // Idle threshold: user.status === 'idle' or lastSeen within 5 minutes (300,000ms)
-  if (user.status === 'idle' && diffMs <= 300000) {
+  if (user.status === 'idle' || diffMs <= 300000) {
     return {
       state: 'idle',
       isOnline: false,
       isIdle: true,
-      label: 'Idle',
-      shortLabel: 'Idle',
+      label: diffMs <= 90000 ? 'Idle' : formattedLastSeen,
+      shortLabel: diffMs <= 90000 ? 'Idle' : shortLabel,
       lastSeenAt: formattedLastSeen,
       formattedLastSeen,
       dotClass: 'bg-amber-400 ring-2 ring-amber-200',
@@ -261,4 +285,3 @@ export function getUserPresence(
     dotClass: 'bg-slate-400',
   };
 }
-
