@@ -144,7 +144,6 @@ export const ProfileView: React.FC = () => {
               {currentUser.name}
             </h3>
             <p className="text-xs text-slate-400">@{currentUser.username}</p>
-            <p className="text-[11px] text-slate-500 mt-0.5">{currentUser.email}</p>
 
             {/* Gender pill */}
             <div className="mt-2">
@@ -187,6 +186,23 @@ export const ProfileView: React.FC = () => {
                 </>
               )}
             </button>
+          </div>
+
+          {/* Separate Email Address Section */}
+          <div className={`mt-2.5 w-full p-2.5 rounded-2xl border flex items-center justify-between gap-2 ${
+            isMidnight ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200/80'
+          }`}>
+            <div className="text-left min-w-0">
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
+                Email Address
+              </span>
+              <span className={`text-xs font-semibold truncate block ${isMidnight ? 'text-slate-200' : 'text-slate-700'}`}>
+                {currentUser.email}
+              </span>
+            </div>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 shrink-0">
+              {currentUser.emailVerified ? 'Verified ✓' : 'Unverified'}
+            </span>
           </div>
 
           <div className="flex items-center gap-2 mt-3 flex-wrap justify-center">

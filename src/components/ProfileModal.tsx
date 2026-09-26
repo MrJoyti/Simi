@@ -380,33 +380,49 @@ export const ProfileModal: React.FC = () => {
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1 scrollbar-thin">
-          {/* User ID Share banner */}
-          <div className="p-3 bg-pink-50/70 border border-pink-200/80 rounded-2xl flex items-center justify-between gap-2">
-            <div className="min-w-0">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                User ID
-              </span>
-              <span className="text-xs font-mono font-bold text-pink-700 truncate block">
-                {currentUser.id}
+          {/* User ID & Email Share banner */}
+          <div className="p-3 bg-pink-50/70 border border-pink-200/80 rounded-2xl space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  User ID
+                </span>
+                <span className="text-xs font-mono font-bold text-pink-700 truncate block">
+                  {currentUser.id}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleCopyId}
+                className="flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-pink-100 text-rose-700 text-xs font-bold rounded-xl border border-pink-200 transition-colors shrink-0 shadow-2xs"
+              >
+                {copiedId ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                    <span className="text-emerald-700">Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Copy ID</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div className="border-t border-pink-200/60 pt-2 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Email Address
+                </span>
+                <span className="text-xs font-semibold text-slate-700 truncate block">
+                  {currentUser.email}
+                </span>
+              </div>
+              <span className="text-[10px] font-bold text-emerald-700 bg-white border border-pink-200 px-2 py-0.5 rounded-full shrink-0">
+                {currentUser.emailVerified ? 'Verified ✓' : 'Unverified'}
               </span>
             </div>
-            <button
-              type="button"
-              onClick={handleCopyId}
-              className="flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-pink-100 text-rose-700 text-xs font-bold rounded-xl border border-pink-200 transition-colors shrink-0 shadow-2xs"
-            >
-              {copiedId ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-emerald-600" />
-                  <span className="text-emerald-700">Copied!</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3.5 h-3.5" />
-                  <span>Copy ID</span>
-                </>
-              )}
-            </button>
           </div>
 
           {/* Cover Photo Banner Preview & Selection */}
@@ -493,7 +509,6 @@ export const ProfileModal: React.FC = () => {
                   )}
                 </div>
                 <p className="text-xs text-slate-500 truncate">@{username || 'user'}</p>
-                <p className="text-[11px] text-slate-400 truncate">{currentUser.email}</p>
                 <p className="text-xs text-rose-500 italic mt-0.5 truncate">
                   "{moodText || 'Smiling brightly'}"
                 </p>
