@@ -1,0 +1,167 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User account profile details registered via Firebase Auth",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "username": { "type": "string" },
+        "email": { "type": "string" },
+        "emailVerified": { "type": "boolean" },
+        "avatarId": { "type": "string" },
+        "customAvatarUrl": { "type": "string" },
+        "bio": { "type": "string" },
+        "moodEmoji": { "type": "string" },
+        "moodText": { "type": "string" },
+        "theme": { "type": "string" },
+        "chatPattern": { "type": "string" },
+        "status": { "type": "string" },
+        "badge": { "type": "string" },
+        "soundEnabled": { "type": "boolean" },
+        "buddyIds": { "type": "array" },
+        "lastReadTimestamps": { "type": "object" },
+        "lastSeen": { "type": "number" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "name", "username", "email", "avatarId"]
+    },
+    "ChatRoom": {
+      "title": "ChatRoom",
+      "description": "Group channel or Friend-to-Friend direct conversation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "icon": { "type": "string" },
+        "type": { "type": "string", "enum": ["group", "direct"] },
+        "isDirect": { "type": "boolean" },
+        "createdBy": { "type": "string" },
+        "participantIds": { "type": "array" },
+        "unreadCount": { "type": "number" },
+        "lastMessage": { "type": "string" },
+        "lastMessageTime": { "type": "number" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "name", "icon", "type"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "Live chat message in a group channel or DM with read receipt tracking",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "roomId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderAvatar": { "type": "string" },
+        "senderCustomAvatar": { "type": "string" },
+        "senderBadge": { "type": "string" },
+        "senderTheme": { "type": "string" },
+        "type": { "type": "string", "enum": ["text", "sticker", "image", "voice"] },
+        "content": { "type": "string" },
+        "attachmentUrl": { "type": "string" },
+        "audioDuration": { "type": "number" },
+        "reactions": { "type": "object" },
+        "replyTo": { "type": "object" },
+        "isPinned": { "type": "boolean" },
+        "timestamp": { "type": "number" },
+        "readBy": { "type": "array" },
+        "readAt": { "type": "number" }
+      },
+      "required": ["id", "roomId", "senderId", "senderName", "type", "content", "timestamp"]
+    },
+    "StoryItem": {
+      "title": "StoryItem",
+      "description": "24-hour disappearing photo or text story like Instagram, WhatsApp, or Facebook",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userAvatar": { "type": "string" },
+        "userCustomAvatar": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "text": { "type": "string" },
+        "gradientBg": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "expiresAt": { "type": "number" },
+        "viewers": { "type": "array" },
+        "reactions": { "type": "object" }
+      },
+      "required": ["id", "userId", "userName", "userAvatar", "createdAt", "expiresAt"]
+    },
+    "CallSession": {
+      "title": "CallSession",
+      "description": "1-on-1 WebRTC video call session between buddies",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "roomId": { "type": "string" },
+        "callerId": { "type": "string" },
+        "callerName": { "type": "string" },
+        "callerAvatar": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "receiverName": { "type": "string" },
+        "receiverAvatar": { "type": "string" },
+        "status": { "type": "string", "enum": ["calling", "connected", "ended", "rejected", "busy"] },
+        "offer": { "type": "object" },
+        "answer": { "type": "object" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "roomId", "callerId", "receiverId", "status", "createdAt"]
+    },
+    "ScheduledMessage": {
+      "title": "ScheduledMessage",
+      "description": "Messages scheduled to be sent at a future date and time via Firebase background triggers",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "roomId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderAvatar": { "type": "string" },
+        "senderCustomAvatar": { "type": "string" },
+        "senderBadge": { "type": "string" },
+        "senderTheme": { "type": "string" },
+        "type": { "type": "string", "enum": ["text", "sticker", "image", "voice"] },
+        "content": { "type": "string" },
+        "attachmentUrl": { "type": "string" },
+        "audioDuration": { "type": "number" },
+        "scheduledFor": { "type": "number" },
+        "status": { "type": "string", "enum": ["scheduled", "sent", "cancelled"] },
+        "createdAt": { "type": "number" },
+        "sentAt": { "type": "number" }
+      },
+      "required": ["id", "roomId", "senderId", "senderName", "type", "content", "scheduledFor", "status", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Profiles for registered users including buddyIds and lastReadTimestamps"
+    },
+    "/rooms/{roomId}": {
+      "schema": "ChatRoom",
+      "description": "Chat channels: group chats and friend-to-friend DMs"
+    },
+    "/rooms/{roomId}/messages/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "Real-time messages belonging to a room with read receipts"
+    },
+    "/stories/{storyId}": {
+      "schema": "StoryItem",
+      "description": "24-hour disappearing stories shared by users and buddies"
+    },
+    "/calls/{callId}": {
+      "schema": "CallSession",
+      "description": "WebRTC signaling calls between buddies"
+    },
+    "/scheduledMessages/{scheduledMessageId}": {
+      "schema": "ScheduledMessage",
+      "description": "Messages queued for scheduled background delivery"
+    }
+  }
+}

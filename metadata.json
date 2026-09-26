@@ -1,0 +1,6 @@
+{
+  "name": "MochiChat",
+  "description": "A delightful real-time chat application with smooth animations, customizable profiles, interactive stickers, voice notes, and live multi-user channels.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

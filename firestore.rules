@@ -1,0 +1,69 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Allow user profile registration, querying, and buddy updates
+    match /users/{userId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if false;
+    }
+
+    // Chat Rooms: Group Chats and Friend-to-Friend DMs
+    match /rooms/{roomId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if true;
+
+      // Messages in a room: read, create, update reactions, delete
+      match /messages/{messageId} {
+        allow read: if true;
+        allow create: if true;
+        allow update: if true;
+        allow delete: if true;
+      }
+
+      // Real-time typing indicators in a room
+      match /typing/{userId} {
+        allow read: if true;
+        allow create, update, delete: if true;
+      }
+    }
+
+    // 24-hour Stories collection (Instagram/WhatsApp/Facebook style)
+    match /stories/{storyId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if true;
+    }
+
+    // WebRTC 1-on-1 Video Calling signaling
+    match /calls/{callId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if true;
+
+      // ICE Candidate subcollections
+      match /callerCandidates/{candidateId} {
+        allow read, write: if true;
+      }
+      match /receiverCandidates/{candidateId} {
+        allow read, write: if true;
+      }
+    }
+
+    // Scheduled Messages for background automated sending
+    match /scheduledMessages/{scheduledMessageId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if true;
+    }
+
+    // Buddy Requests collection
+    match /buddyRequests/{requestId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+  }
+}
