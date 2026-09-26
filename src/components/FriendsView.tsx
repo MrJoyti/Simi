@@ -128,7 +128,7 @@ export const FriendsView: React.FC = () => {
       {/* Tabs & Search Filter */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-4">
         <div
-          className={`flex p-1 rounded-2xl border w-full sm:w-auto ${
+          className={`flex p-1 rounded-2xl border w-full sm:w-auto overflow-x-auto scrollbar-none ${
             isMidnight ? 'bg-slate-900 border-slate-800' : 'bg-pink-100/60 border-pink-200/50'
           }`}
         >
@@ -137,7 +137,7 @@ export const FriendsView: React.FC = () => {
               sounds.playClick();
               setFilterTab('buddies');
             }}
-            className={`flex-1 sm:flex-none px-4 py-1.5 text-xs font-bold rounded-xl transition-all ${
+            className={`flex-1 sm:flex-none whitespace-nowrap px-2 sm:px-4 py-1.5 text-[11px] sm:text-xs font-bold rounded-xl transition-all ${
               filterTab === 'buddies'
                 ? isMidnight
                   ? 'bg-slate-800 text-blue-400 shadow-2xs'
@@ -154,7 +154,7 @@ export const FriendsView: React.FC = () => {
               sounds.playClick();
               setFilterTab('requests');
             }}
-            className={`flex-1 sm:flex-none px-4 py-1.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 relative ${
+            className={`flex-1 sm:flex-none whitespace-nowrap px-2 sm:px-4 py-1.5 text-[11px] sm:text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1 sm:gap-1.5 relative ${
               filterTab === 'requests'
                 ? isMidnight
                   ? 'bg-slate-800 text-blue-400 shadow-2xs'
@@ -162,8 +162,8 @@ export const FriendsView: React.FC = () => {
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Bell className="w-3.5 h-3.5" />
-            <span>Requests ({incomingRequests.length})</span>
+            <Bell className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+            <span className="whitespace-nowrap">Requests ({incomingRequests.length})</span>
             {incomingRequests.length > 0 && (
               <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping absolute top-1 right-1" />
             )}
@@ -174,7 +174,7 @@ export const FriendsView: React.FC = () => {
               sounds.playClick();
               setFilterTab('explore');
             }}
-            className={`flex-1 sm:flex-none px-4 py-1.5 text-xs font-bold rounded-xl transition-all ${
+            className={`flex-1 sm:flex-none whitespace-nowrap px-2 sm:px-4 py-1.5 text-[11px] sm:text-xs font-bold rounded-xl transition-all ${
               filterTab === 'explore'
                 ? isMidnight
                   ? 'bg-slate-800 text-blue-400 shadow-2xs'

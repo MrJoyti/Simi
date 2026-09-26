@@ -599,7 +599,7 @@ export const ChatInput: React.FC = () => {
           {/* Input Controls Row */}
           <form
             onSubmit={handleSend}
-            className={`flex items-center gap-1.5 sm:gap-2 border rounded-3xl p-1.5 transition-all ${
+            className={`flex items-center gap-1 sm:gap-2 border rounded-3xl p-1 sm:p-1.5 transition-all ${
               isMidnight
                 ? 'bg-[#182230] hover:bg-[#1e2b3c] focus-within:bg-[#1e2b3c] border-slate-700 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-950'
                 : 'bg-pink-50/50 hover:bg-pink-50/80 focus-within:bg-white border-pink-200/70 focus-within:border-pink-400 focus-within:ring-2 focus-within:ring-pink-200'
@@ -612,26 +612,26 @@ export const ChatInput: React.FC = () => {
                 sounds.playClick();
                 setShowStickers(!showStickers);
               }}
-              className={`p-2 rounded-2xl transition-colors ${
+              className={`p-1.5 sm:p-2 rounded-2xl transition-colors shrink-0 ${
                 showStickers
                   ? isMidnight ? 'bg-slate-800 text-blue-400' : 'bg-rose-100 text-rose-700'
                   : isMidnight ? 'text-slate-300 hover:text-blue-400 hover:bg-slate-800' : 'text-slate-500 hover:text-pink-600 hover:bg-pink-100/50'
               }`}
               title="Stickers & emoji"
             >
-              <Smile className="w-4 h-4" />
+              <Smile className="w-4 h-4 shrink-0" />
             </button>
 
             {/* Photo Attachment Button (Opens file picker -> triggers Preview Modal) */}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className={`p-2 rounded-2xl transition-colors ${
+              className={`p-1.5 sm:p-2 rounded-2xl transition-colors shrink-0 ${
                 isMidnight ? 'text-slate-300 hover:text-blue-400 hover:bg-slate-800' : 'text-slate-500 hover:text-pink-600 hover:bg-pink-100/50'
               }`}
               title="Attach photo from device"
             >
-              <ImageIcon className="w-4 h-4" />
+              <ImageIcon className="w-4 h-4 shrink-0" />
               <input
                 ref={fileInputRef}
                 type="file"
@@ -645,12 +645,12 @@ export const ChatInput: React.FC = () => {
             <button
               type="button"
               onClick={startRecording}
-              className={`p-2 rounded-2xl transition-colors ${
+              className={`p-1.5 sm:p-2 rounded-2xl transition-colors shrink-0 ${
                 isMidnight ? 'text-slate-300 hover:text-blue-400 hover:bg-slate-800' : 'text-slate-500 hover:text-rose-600 hover:bg-pink-100/50'
               }`}
               title="Record voice note"
             >
-              <Mic className="w-4 h-4" />
+              <Mic className="w-4 h-4 shrink-0" />
             </button>
 
             {/* Main Text Input */}
@@ -665,7 +665,7 @@ export const ChatInput: React.FC = () => {
                   ? `Reply to ${replyingTo.senderName}...`
                   : 'Send a message...'
               }
-              className={`flex-1 bg-transparent px-2 text-xs sm:text-sm focus:outline-none font-medium ${
+              className={`flex-1 min-w-0 bg-transparent px-1 sm:px-2 text-xs sm:text-sm focus:outline-none font-medium ${
                 isMidnight ? 'text-slate-100 placeholder-slate-400' : 'text-slate-800 placeholder-slate-400'
               }`}
             />
@@ -677,17 +677,17 @@ export const ChatInput: React.FC = () => {
                 sounds.playReaction();
                 triggerConfetti();
               }}
-              className="p-2 rounded-2xl text-amber-500 hover:bg-amber-500/10 hover:scale-110 transition-all"
+              className="p-1.5 sm:p-2 rounded-2xl text-amber-500 hover:bg-amber-500/10 hover:scale-110 transition-all shrink-0"
               title="Celebrate with confetti!"
             >
-              <Sparkles className="w-4 h-4" />
+              <Sparkles className="w-4 h-4 shrink-0" />
             </button>
 
             {/* Send Button */}
             <button
               type="submit"
               disabled={!text.trim()}
-              className={`p-2.5 rounded-2xl flex items-center justify-center transition-all ${
+              className={`p-2 sm:p-2.5 rounded-2xl flex items-center justify-center shrink-0 transition-all ${
                 text.trim()
                   ? isMidnight
                     ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-md shadow-blue-950/50 active:scale-95'
@@ -698,7 +698,7 @@ export const ChatInput: React.FC = () => {
               }`}
               title="Send message"
             >
-              <Send className="w-4 h-4" />
+              <Send className="w-4 h-4 shrink-0" />
             </button>
           </form>
         </div>
