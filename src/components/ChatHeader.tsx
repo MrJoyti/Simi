@@ -26,6 +26,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ onToggleSidebarMobile })
     theme,
     typingUsers,
     startVideoCall,
+    startAudioCall,
     activeCall,
     isOnline,
     setActiveMobileTab,
@@ -96,7 +97,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ onToggleSidebarMobile })
   const handleAudioCall = () => {
     if (!directBuddy || userBlocked) return;
     sounds.playClick();
-    startVideoCall(directBuddy);
+    startAudioCall(directBuddy);
   };
 
   // Toggle More Info Drawer

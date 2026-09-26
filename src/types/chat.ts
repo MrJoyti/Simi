@@ -147,11 +147,24 @@ export interface StoryItem {
   reactions?: Record<string, string[]>; // emoji -> array of user IDs
 }
 
-export type CallStatus = 'calling' | 'connected' | 'ended' | 'rejected' | 'busy';
+export type CallType = 'audio' | 'video';
+
+export type CallStatus =
+  | 'idle'
+  | 'calling'
+  | 'ringing'
+  | 'connecting'
+  | 'connected'
+  | 'reconnecting'
+  | 'ended'
+  | 'failed'
+  | 'rejected'
+  | 'busy';
 
 export interface CallSession {
   id: string;
   roomId: string;
+  callType?: CallType; // 'audio' | 'video' (defaults to 'video')
   callerId: string;
   callerName: string;
   callerAvatar: string;

@@ -9,6 +9,7 @@ import {
   UserProfile,
   StoryItem,
   CallSession,
+  CallType,
   ScheduledMessage,
   BuddyRequest,
   BuddyRequestState,
@@ -139,9 +140,11 @@ interface ChatContextType {
   showCreateStoryModal: boolean;
   setShowCreateStoryModal: (show: boolean) => void;
 
-  // --- WebRTC 1-on-1 Video Calling state & actions ---
+  // --- WebRTC 1-on-1 Calling state & actions ---
   activeCall: CallSession | null;
+  startCall: (targetBuddy: UserProfile, callType?: CallType) => Promise<void>;
   startVideoCall: (targetBuddy: UserProfile) => Promise<void>;
+  startAudioCall: (targetBuddy: UserProfile) => Promise<void>;
   answerCall: () => Promise<void>;
   rejectCall: () => Promise<void>;
   endCall: () => Promise<void>;
@@ -628,7 +631,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // If incoming call received from a buddy, trigger push notification
         if (activeFound && (!prev || prev.id !== activeFound.id)) {
           if (activeFound.receiverId === currentUserId && activeFound.status === 'calling') {
-            showPushNotification(`Incoming Call from ${activeFound.callerName} 📹`, {
+            const isVideo = activeFound.callType !== 'audio';
+            showPushNotification(`Incoming ${isVideo ? 'Video' : 'Audio'} Call from ${activeFound.callerName} ${isVideo ? '📹' : '📞'}`, {
               body: 'Tap to open Simi and answer the call!',
               tag: `call-${activeFound.id}`,
             });
@@ -644,8 +648,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [currentUser?.id]);
 
   // WebRTC Call Initiation (Caller)
-  const startVideoCall = useCallback(
-    async (targetBuddy: UserProfile) => {
+  const startCall = useCallback(
+    async (targetBuddy: UserProfile, callType: CallType = 'video') => {
       const user = currentUserRef.current;
       if (!user) return;
       sounds.playSend();
@@ -654,6 +658,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const callData: CallSession = {
         id: callId,
         roomId: currentRoomId,
+        callType,
         callerId: user.id,
         callerName: user.name,
         callerAvatar: user.avatarId,
@@ -671,10 +676,24 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await setDoc(callRef, cleanForFirestore(callData));
         setActiveCall(callData);
       } catch (err) {
-        console.error('Failed to initiate video call:', err);
+        console.error('Failed to initiate call:', err);
       }
     },
     [currentRoomId]
+  );
+
+  const startVideoCall = useCallback(
+    async (targetBuddy: UserProfile) => {
+      return startCall(targetBuddy, 'video');
+    },
+    [startCall]
+  );
+
+  const startAudioCall = useCallback(
+    async (targetBuddy: UserProfile) => {
+      return startCall(targetBuddy, 'audio');
+    },
+    [startCall]
   );
 
   // Answer Call (Receiver)
@@ -2092,7 +2111,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         showCreateStoryModal,
         setShowCreateStoryModal,
         activeCall,
+        startCall,
         startVideoCall,
+        startAudioCall,
         answerCall,
         rejectCall,
         endCall,
