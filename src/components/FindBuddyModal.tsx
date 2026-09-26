@@ -176,7 +176,14 @@ export const FindBuddyModal: React.FC = () => {
                       )}
                     </div>
                     <p className="text-[11px] text-slate-400 truncate">@{foundUser.username}</p>
-                    <p className="text-[10px] text-slate-500 font-mono truncate">ID: {foundUser.id}</p>
+                    {getBuddyRequestState(foundUser.id) === 'buddy' || foundUser.id === currentUser.id ? (
+                      <>
+                        <p className="text-[10px] text-slate-500 font-mono truncate">ID: {foundUser.id}</p>
+                        <p className="text-[10px] text-slate-500 truncate">📧 {foundUser.email}</p>
+                      </>
+                    ) : (
+                      <p className="text-[10px] text-slate-400 italic truncate">🔒 ID & Email hidden (Buddies only)</p>
+                    )}
                   </div>
                 </div>
 
@@ -272,7 +279,7 @@ export const FindBuddyModal: React.FC = () => {
                           {user.name}
                         </span>
                         <span className="text-[10px] text-slate-400 truncate block">
-                          @{user.username} · ID: {user.id.slice(0, 10)}...
+                          @{user.username} · {reqState === 'buddy' ? `ID: ${user.id.slice(0, 10)}...` : '🔒 ID & Email hidden'}
                         </span>
                       </div>
                     </div>

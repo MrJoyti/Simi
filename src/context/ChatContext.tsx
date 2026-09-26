@@ -1251,10 +1251,15 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [showConversationInfoDrawer, setShowConversationInfoDrawer] = useState(false);
   const [selectedProfileUser, setSelectedProfileUser] = useState<UserProfile | null>(null);
 
+  const knownIncomingReqIdsRef = useRef<Set<string>>(new Set());
+  const isReqListenerInitRef = useRef<boolean>(false);
+
   // Firestore listener for buddyRequests involving currentUser
   useEffect(() => {
     if (!currentUser?.id) {
       setBuddyRequests([]);
+      knownIncomingReqIdsRef.current.clear();
+      isReqListenerInitRef.current = false;
       return;
     }
     const currentUserId = currentUser.id;
@@ -1274,6 +1279,26 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const unsubTo = onSnapshot(qTo, (snapTo) => {
       const toList = snapTo.docs.map((d) => ({ id: d.id, ...d.data() } as BuddyRequest));
+      const pendingIncoming = toList.filter((r) => r.status === 'pending');
+
+      if (isReqListenerInitRef.current) {
+        pendingIncoming.forEach((req) => {
+          if (!knownIncomingReqIdsRef.current.has(req.id)) {
+            // Play notification sound
+            sounds.playReceive();
+            // Show push notification
+            showPushNotification('New Buddy Request 🌸', {
+              body: `${req.fromUserName} sent you a buddy request!`,
+              tag: `buddy-req-${req.id}`,
+            });
+          }
+        });
+      } else {
+        isReqListenerInitRef.current = true;
+      }
+
+      knownIncomingReqIdsRef.current = new Set(pendingIncoming.map((r) => r.id));
+
       setBuddyRequests((prev) => {
         const otherList = prev.filter((r) => r.toUserId !== currentUserId);
         return [...otherList, ...toList];

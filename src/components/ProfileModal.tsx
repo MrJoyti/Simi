@@ -132,6 +132,23 @@ export const ProfileModal: React.FC = () => {
             <h3 className="text-base font-bold text-slate-800">{selectedProfileUser.name}</h3>
             <p className="text-xs text-slate-400">@{selectedProfileUser.username}</p>
 
+            {reqState === 'buddy' ? (
+              <div className="mt-2.5 w-full p-2.5 rounded-2xl bg-pink-50/70 border border-pink-200/80 text-left space-y-1">
+                <div className="flex items-center justify-between gap-2 min-w-0">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Email</span>
+                  <span className="text-xs font-semibold text-slate-700 truncate">{selectedProfileUser.email}</span>
+                </div>
+                <div className="flex items-center justify-between gap-2 min-w-0">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">User ID</span>
+                  <code className="text-xs font-mono font-bold text-rose-700 truncate">{selectedProfileUser.id}</code>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-2 text-center text-[11px] text-slate-400 italic bg-slate-50 p-2 rounded-xl border border-slate-100 w-full">
+                🔒 Email & User ID hidden (Add buddy to view)
+              </div>
+            )}
+
             {isAllowed ? (
               <>
                 <p className="mt-2 text-xs text-slate-600 bg-pink-50/60 p-2.5 rounded-2xl border border-pink-100/80 max-w-xs">

@@ -64,3 +64,29 @@ export function canCallUser(
 ): boolean {
   return canMessageUser(targetUser, viewerUser);
 }
+
+/**
+ * Evaluates whether targetUser and viewerUser are added buddies (friends).
+ */
+export function isBuddyUser(
+  targetUser: UserProfile | undefined | null,
+  viewerUser: UserProfile | undefined | null
+): boolean {
+  if (!targetUser || !viewerUser) return false;
+  if (targetUser.id === viewerUser.id) return true;
+  return (
+    (targetUser.buddyIds || []).includes(viewerUser.id) ||
+    (viewerUser.buddyIds || []).includes(targetUser.id)
+  );
+}
+
+/**
+ * Requirement: Only if users are buddies (or self) can email & user ID be viewed.
+ */
+export function canViewEmailAndId(
+  targetUser: UserProfile | undefined | null,
+  viewerUser: UserProfile | undefined | null
+): boolean {
+  return isBuddyUser(targetUser, viewerUser);
+}
+

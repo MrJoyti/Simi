@@ -11,15 +11,18 @@ interface TabItem {
 }
 
 export const MobileNavigation: React.FC = () => {
-  const { activeMobileTab, setActiveMobileTab, rooms, theme } = useChat();
+  const { activeMobileTab, setActiveMobileTab, rooms, theme, buddyRequests, currentUser } = useChat();
   const isMidnight = theme === 'midnight';
 
   const totalUnread = rooms.reduce((acc, r) => acc + (r.unreadCount || 0), 0);
+  const pendingRequestsCount = buddyRequests.filter(
+    (r) => r.toUserId === currentUser?.id && r.status === 'pending'
+  ).length;
 
   const tabs: TabItem[] = [
     { id: 'spaces', label: 'Verse', icon: Sparkles },
     { id: 'chats', label: 'Chats', icon: MessageSquare, badge: totalUnread > 0 ? totalUnread : undefined },
-    { id: 'friends', label: 'Friends', icon: Users },
+    { id: 'friends', label: 'Friends', icon: Users, badge: pendingRequestsCount > 0 ? pendingRequestsCount : undefined },
     { id: 'profile', label: 'Profile', icon: User },
   ];
 
