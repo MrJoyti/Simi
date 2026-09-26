@@ -27,7 +27,7 @@ export const MobileNavigation: React.FC = () => {
   ];
 
   return (
-    <nav className={`md:hidden sticky bottom-0 z-40 px-3 py-1 flex items-center justify-around shadow-lg safe-bottom border-t backdrop-blur-lg ${
+    <nav className={`md:hidden shrink-0 sticky bottom-0 z-40 px-3 py-1 flex items-center justify-around shadow-lg safe-bottom border-t backdrop-blur-xl ${
       isMidnight ? 'bg-[#111821]/95 border-slate-800 text-slate-200' : 'bg-white/95 border-pink-100/90'
     }`}>
       {tabs.map((tab) => {

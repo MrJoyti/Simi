@@ -47,7 +47,7 @@ const ChatInterface: React.FC = () => {
     const isMaleTheme = theme === 'midnight';
     return (
       <div
-        className="flex h-screen w-screen items-center justify-center transition-colors duration-300"
+        className="flex h-[100dvh] w-full items-center justify-center transition-colors duration-300"
         style={{ backgroundColor: activeTheme.bodyBg }}
       >
         <div className="flex flex-col items-center gap-3">
@@ -80,7 +80,7 @@ const ChatInterface: React.FC = () => {
 
   return (
     <div
-      className={`flex flex-col md:flex-row h-screen w-screen overflow-hidden transition-colors duration-300 font-sans select-none ${isMaleTheme ? 'text-slate-100' : 'text-slate-800'}`}
+      className={`flex flex-col md:flex-row h-[100dvh] w-full max-w-full overflow-hidden transition-colors duration-300 font-sans select-none ${isMaleTheme ? 'text-slate-100' : 'text-slate-800'}`}
       style={{ backgroundColor: activeTheme.bodyBg }}
     >
       {/* Desktop Persistent Sidebar */}
@@ -102,35 +102,41 @@ const ChatInterface: React.FC = () => {
       )}
 
       {/* Main Content Area */}
-      <div className={`flex-1 flex flex-col h-full min-w-0 backdrop-blur-xs relative overflow-hidden transition-colors duration-300 ${isMaleTheme ? 'bg-[#0B0F14]/90' : 'bg-white/70'}`}>
+      <div className={`flex-1 flex flex-col h-full min-h-0 min-w-0 backdrop-blur-xs relative overflow-hidden transition-colors duration-300 ${isMaleTheme ? 'bg-[#0B0F14]/90' : 'bg-white/70'}`}>
         {/* On Mobile: Render Active Tab View */}
-        <div className="md:hidden flex-1 flex flex-col h-full min-w-0 overflow-hidden">
+        <div className="md:hidden flex-1 flex flex-col h-full min-h-0 min-w-0 overflow-hidden relative">
           {activeMobileTab === 'chats' && (
             currentRoomId ? (
-              <>
+              <div className="flex-1 flex flex-col h-full min-h-0 min-w-0 overflow-hidden">
                 <ChatHeader onToggleSidebarMobile={() => setMobileSidebarOpen(true)} />
                 <MessageList />
                 <ChatInput />
-              </>
+              </div>
             ) : (
-              <MobileChannelsList />
+              <div className="flex-1 flex flex-col h-full min-h-0 min-w-0 overflow-hidden">
+                <MobileChannelsList />
+              </div>
             )
           )}
           {activeMobileTab === 'spaces' && (
-            <VerseView />
-          )}
-          {activeMobileTab === 'friends' && (
-            <div className="flex flex-col h-full overflow-hidden">
-              <div className="flex-1 overflow-y-auto">
-                <FriendsView />
-              </div>
+            <div className="flex-1 flex flex-col h-full min-h-0 min-w-0 overflow-hidden">
+              <VerseView />
             </div>
           )}
-          {activeMobileTab === 'profile' && <ProfileView />}
+          {activeMobileTab === 'friends' && (
+            <div className="flex-1 flex flex-col h-full min-h-0 min-w-0 overflow-hidden">
+              <FriendsView />
+            </div>
+          )}
+          {activeMobileTab === 'profile' && (
+            <div className="flex-1 flex flex-col h-full min-h-0 min-w-0 overflow-hidden">
+              <ProfileView />
+            </div>
+          )}
         </div>
 
         {/* On Desktop: Standard full chat flow with StoriesBar header */}
-        <div className="hidden md:flex flex-1 flex-col h-full min-w-0">
+        <div className="hidden md:flex flex-1 flex-col h-full min-h-0 min-w-0">
           <ChatHeader onToggleSidebarMobile={() => setMobileSidebarOpen(true)} />
           <StoriesBar />
           <MessageList />
