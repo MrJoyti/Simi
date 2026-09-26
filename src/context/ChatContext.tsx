@@ -1645,9 +1645,17 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     (userId: string) => {
       const user = currentUserRef.current;
       if (!user) return false;
-      return (user.buddyIds || []).includes(userId);
+      if (user.id === userId) return true;
+      const isDirectBuddy = (user.buddyIds || []).includes(userId);
+      const isReqBuddy = buddyRequests.some(
+        (r) =>
+          r.status === 'accepted' &&
+          ((r.fromUserId === user.id && r.toUserId === userId) ||
+            (r.fromUserId === userId && r.toUserId === user.id))
+      );
+      return isDirectBuddy || isReqBuddy;
     },
-    []
+    [buddyRequests]
   );
 
   // Start Direct Message (DOES NOT call addBuddy!)

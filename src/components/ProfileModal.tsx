@@ -56,6 +56,7 @@ export const ProfileModal: React.FC = () => {
     declineBuddyRequest,
     cancelBuddyRequest,
     removeBuddy,
+    isBuddy,
     buddyRequests,
     isBlocked,
     toggleBlockUser,
@@ -132,7 +133,7 @@ export const ProfileModal: React.FC = () => {
             <h3 className="text-base font-bold text-slate-800">{selectedProfileUser.name}</h3>
             <p className="text-xs text-slate-400">@{selectedProfileUser.username}</p>
 
-            {reqState === 'buddy' ? (
+            {isBuddy(selectedProfileUser.id) ? (
               <div className="mt-2.5 w-full p-2.5 rounded-2xl bg-pink-50/70 border border-pink-200/80 text-left space-y-1">
                 <div className="flex items-center justify-between gap-2 min-w-0">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Email</span>
