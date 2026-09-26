@@ -38,12 +38,12 @@ export const CreateRoomModal: React.FC = () => {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 bg-black/55 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
       onClick={() => setShowCreateRoomModal(false)}
     >
       <div
-        className={`relative w-full max-w-md rounded-3xl shadow-2xl border p-6 max-h-[90vh] overflow-y-auto scrollbar-thin ${
-          isMidnight ? 'bg-[#111821] border-slate-800 text-slate-100' : 'bg-white border-pink-100'
+        className={`relative w-full max-w-md rounded-3xl shadow-2xl border p-6 max-h-[90vh] overflow-y-auto scrollbar-thin animate-modalPop backdrop-blur-xl ${
+          isMidnight ? 'bg-[#111821]/95 border-slate-800/80 text-slate-100' : 'bg-white/95 border-pink-100/80'
         }`}
         onClick={(e) => e.stopPropagation()}
       >

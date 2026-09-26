@@ -128,9 +128,9 @@ export const CreateStoryModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
-      <div className={`relative w-full max-w-sm sm:max-w-md rounded-3xl shadow-2xl border overflow-hidden flex flex-col max-h-[92vh] ${
-        isMale ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-pink-100 text-slate-800'
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
+      <div className={`relative w-full max-w-sm sm:max-w-md rounded-3xl shadow-2xl border overflow-hidden flex flex-col max-h-[92vh] animate-modalPop backdrop-blur-xl ${
+        isMale ? 'bg-slate-900/95 border-slate-800/80 text-slate-100' : 'bg-white/95 border-pink-100/80 text-slate-800'
       }`}>
         {/* Header */}
         <div className={`p-4 px-5 border-b flex items-center justify-between ${

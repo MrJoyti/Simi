@@ -394,7 +394,7 @@ export const VideoCallModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 select-none animate-in fade-in duration-200">
-      <div className={`relative w-full max-w-2xl h-[88vh] max-h-[720px] bg-slate-950 rounded-3xl overflow-hidden shadow-2xl border flex flex-col justify-between ${
+      <div className={`relative w-full max-w-2xl h-[88vh] max-h-[720px] bg-slate-950/95 rounded-3xl overflow-hidden shadow-2xl border flex flex-col justify-between animate-modalPop backdrop-blur-xl ${
         isMale ? 'border-blue-500/40' : 'border-pink-300/40'
       }`}>
         {/* Top Header Bar */}
