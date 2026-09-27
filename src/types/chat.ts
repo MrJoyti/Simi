@@ -15,6 +15,8 @@ export type ChatPattern =
   | 'blueprint'
   | 'nocturne';
 
+export type PrivacyVisibility = 'public' | 'only_me' | 'buddies' | 'buddies_of_buddies';
+
 export type RelationshipState =
   | 'NONE'
   | 'OUTGOING_PENDING'
@@ -187,6 +189,7 @@ export interface CallSession {
   receiverAvatar: string;
   receiverCustomAvatar?: string;
   status: CallStatus;
+  participantIds?: string[];
   offer?: RTCSessionDescriptionInit;
   answer?: RTCSessionDescriptionInit;
   createdAt: number;

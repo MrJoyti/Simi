@@ -11,6 +11,8 @@ import {
   Trash2,
   UserPlus,
   UserMinus,
+  UserX,
+  Check,
 } from 'lucide-react';
 import { sounds } from '../utils/sound';
 import { getUserPresence } from '../utils/presence';
@@ -27,7 +29,11 @@ export const MembersPanel: React.FC = () => {
     togglePinMessage,
     deleteChannel,
     isBuddy,
-    addBuddy,
+    getBuddyRequestState,
+    sendBuddyRequest,
+    acceptBuddyRequest,
+    declineBuddyRequest,
+    cancelBuddyRequest,
     removeBuddy,
     isOnline,
     theme,
@@ -222,7 +228,7 @@ export const MembersPanel: React.FC = () => {
 
                   {!isSelf && (
                     <div className="flex items-center gap-1 shrink-0">
-                      {buddyStatus ? (
+                      {getBuddyRequestState(user.id) === 'buddy' ? (
                         <button
                           onClick={async () => {
                             if (window.confirm(`Delete ${user.name} from your buddies?`)) {
@@ -235,9 +241,46 @@ export const MembersPanel: React.FC = () => {
                         >
                           <UserMinus className="w-3.5 h-3.5" />
                         </button>
+                      ) : getBuddyRequestState(user.id) === 'requestSent' ? (
+                        <button
+                          onClick={() => {
+                            sounds.playClick();
+                            cancelBuddyRequest(user.id);
+                          }}
+                          className={`p-1.5 rounded-xl text-rose-500 hover:bg-rose-50 ${isMidnight ? 'hover:bg-slate-800' : ''}`}
+                          title="Cancel Buddy Request"
+                        >
+                          <UserX className="w-3.5 h-3.5" />
+                        </button>
+                      ) : getBuddyRequestState(user.id) === 'incomingRequest' ? (
+                        <div className="flex items-center gap-0.5">
+                          <button
+                            onClick={() => {
+                              sounds.playSend();
+                              acceptBuddyRequest(user.id, user.id);
+                            }}
+                            className="p-1.5 rounded-xl text-emerald-500 hover:bg-emerald-50"
+                            title="Accept Request"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              sounds.playClick();
+                              declineBuddyRequest(user.id);
+                            }}
+                            className="p-1.5 rounded-xl text-slate-400 hover:bg-slate-100"
+                            title="Decline Request"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       ) : (
                         <button
-                          onClick={() => addBuddy(user)}
+                          onClick={() => {
+                            sounds.playClick();
+                            sendBuddyRequest(user);
+                          }}
                           className={`p-1.5 rounded-xl ${isMidnight ? 'text-blue-400 hover:bg-slate-800' : 'text-rose-500 hover:bg-pink-100'}`}
                           title="Add Buddy"
                         >

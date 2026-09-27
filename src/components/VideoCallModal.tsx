@@ -485,7 +485,7 @@ export const VideoCallModal: React.FC = () => {
             await pc.setRemoteDescription(answerDescription);
             console.log('[CALL] Remote description set');
             await flushQueuedIceCandidates(pc);
-            setCallState('connected');
+            setCallState('connecting');
           }
         });
       } catch (err: any) {
@@ -595,7 +595,7 @@ export const VideoCallModal: React.FC = () => {
         status: 'connected',
       });
 
-      setCallState('connected');
+      setCallState('connecting');
 
       // Listen for remote call termination
       unsubCallRef.current = onSnapshot(callDocRef, (snapshot) => {
@@ -657,6 +657,27 @@ export const VideoCallModal: React.FC = () => {
     endCall();
   };
 
+  // 45-second unanswered call timeout to prevent infinite ringing/calling
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout | null = null;
+    if (callState === 'calling' || callState === 'ringing') {
+      timeoutId = setTimeout(() => {
+        console.log('[CALL] Unanswered timeout reached (45s)');
+        setMediaError('Call was not answered.');
+        setTimeout(() => {
+          if (isCaller) {
+            handleEndCall();
+          } else {
+            handleRejectCall();
+          }
+        }, 1500);
+      }, 45000);
+    }
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [callState, isCaller]);
+
   // Local Video preview attachment
   useEffect(() => {
     if (localVideoRef.current && localStream) {
@@ -672,22 +693,22 @@ export const VideoCallModal: React.FC = () => {
     if (!remoteStream) return;
 
     // Attach to remote video element if in video call
+    // Note: Video element is kept MUTED so the dedicated HTMLAudioElement handles audio exclusively without phase echo
     if (isVideoCall && remoteVideoRef.current) {
       if (remoteVideoRef.current.srcObject !== remoteStream) {
         remoteVideoRef.current.srcObject = remoteStream;
         console.log('[CALL] Remote stream attached to video element');
       }
-      remoteVideoRef.current.muted = false;
-      remoteVideoRef.current.volume = 1.0;
+      remoteVideoRef.current.muted = true;
+      remoteVideoRef.current.volume = 0;
       remoteVideoRef.current
         .play()
         .then(() => {
-          console.log('[CALL] Media playback started');
+          console.log('[CALL] Video playback started');
           setAutoplayBlocked(false);
         })
         .catch((err) => {
-          console.warn('[CALL] Autoplay prevented by browser:', err);
-          setAutoplayBlocked(true);
+          console.warn('[CALL] Video autoplay issue:', err);
         });
     }
 
@@ -943,6 +964,7 @@ export const VideoCallModal: React.FC = () => {
               ref={remoteVideoRef}
               autoPlay
               playsInline
+              muted
               className="w-full h-full object-cover"
             />
           ) : (

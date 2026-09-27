@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import {
   ChatMessage,
   ChatRoom,
@@ -18,7 +18,14 @@ import {
 import { sounds } from '../utils/sound';
 import { THEMES } from '../utils/theme';
 import confetti from 'canvas-confetti';
-import { db, auth } from '../firebase';
+import { db, auth, rtdb } from '../firebase';
+import {
+  ref as rtdbRef,
+  onValue as rtdbOnValue,
+  set as rtdbSet,
+  onDisconnect as rtdbOnDisconnect,
+  serverTimestamp as rtdbServerTimestamp,
+} from 'firebase/database';
 import {
   collection,
   doc,
@@ -332,8 +339,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const lastPresenceWriteRef = useRef<number>(0);
   const currentPresenceStatusRef = useRef<'online' | 'idle' | 'offline'>('online');
   const prevTypingCountRef = useRef<number>(0);
+  const sendPresenceUpdateRef = useRef<(status: 'online' | 'idle' | 'offline') => Promise<void>>(async () => {});
 
-  // Heartbeat & Online Presence Tracking in Firestore with Activity Tracking
+  // Heartbeat & Online Presence Tracking in Firestore & RTDB with Activity Tracking
   useEffect(() => {
     if (!currentUser?.id) return;
     const userId = currentUser.id;
@@ -341,10 +349,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const sendPresenceUpdate = async (status: 'online' | 'idle' | 'offline') => {
       const targetStatus = currentUser.showActiveStatus === false ? 'offline' : status;
       const now = Date.now();
-      // Throttle rapid repeated identical writes (12 seconds minimum unless going offline)
+      // Throttle rapid repeated identical writes (10 seconds minimum unless going offline or coming online)
       if (
         targetStatus === currentPresenceStatusRef.current &&
-        now - lastPresenceWriteRef.current < 12000 &&
+        now - lastPresenceWriteRef.current < 10000 &&
         targetStatus !== 'offline'
       ) {
         return;
@@ -363,13 +371,42 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // silent fail
       }
     };
+    sendPresenceUpdateRef.current = sendPresenceUpdate;
 
-    // Immediate presence signal on login / mount
+    // 1. Firebase Realtime Database true connection-aware presence if RTDB is available
+    let unsubRtdb: (() => void) | null = null;
+    if (rtdb) {
+      try {
+        const connectedRef = rtdbRef(rtdb, '.info/connected');
+        const userStatusRtdbRef = rtdbRef(rtdb, `/status/${userId}`);
+
+        unsubRtdb = rtdbOnValue(connectedRef, (snapshot) => {
+          if (snapshot.val() === true) {
+            rtdbOnDisconnect(userStatusRtdbRef)
+              .set({
+                state: 'offline',
+                lastSeen: rtdbServerTimestamp(),
+              })
+              .then(() => {
+                rtdbSet(userStatusRtdbRef, {
+                  state: currentUser.showActiveStatus === false ? 'offline' : 'online',
+                  lastSeen: rtdbServerTimestamp(),
+                });
+              })
+              .catch(() => {});
+          }
+        });
+      } catch (err) {
+        console.warn('RTDB presence note:', err);
+      }
+    }
+
+    // 2. Immediate presence signal on mount/boot
     if (navigator.onLine) {
       sendPresenceUpdate('online');
     }
 
-    // Idle detection timer (3 minutes inactivity)
+    // Idle detection timer (4 minutes inactivity)
     let idleTimer: NodeJS.Timeout | null = null;
     const resetIdleTimer = () => {
       if (idleTimer) clearTimeout(idleTimer);
@@ -382,7 +419,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (navigator.onLine && document.visibilityState === 'visible') {
           sendPresenceUpdate('idle');
         }
-      }, 180000); // 3 minutes
+      }, 240000); // 4 minutes
     };
 
     // User activity listener for throttling updates
@@ -392,28 +429,38 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (
         navigator.onLine &&
         document.visibilityState === 'visible' &&
-        (currentPresenceStatusRef.current !== 'online' || now - lastPresenceWriteRef.current > 20000)
+        (currentPresenceStatusRef.current !== 'online' || now - lastPresenceWriteRef.current > 25000)
       ) {
         sendPresenceUpdate('online');
       }
     };
 
-    // Periodic heartbeat every 25 seconds while tab is active
+    // Periodic heartbeat every 20 seconds while tab is active and visible
     const heartbeatInterval = setInterval(() => {
       if (navigator.onLine && document.visibilityState === 'visible') {
         sendPresenceUpdate(currentPresenceStatusRef.current === 'idle' ? 'idle' : 'online');
       }
-    }, 25000);
+    }, 20000);
 
-    // Tab visibility changes (online vs idle)
+    // Tab visibility changes with debounce to prevent flicker on brief tab switching
+    let hiddenTimer: NodeJS.Timeout | null = null;
     const handleVisibilityChange = () => {
       if (!navigator.onLine) return;
       if (document.visibilityState === 'visible') {
+        if (hiddenTimer) {
+          clearTimeout(hiddenTimer);
+          hiddenTimer = null;
+        }
         resetIdleTimer();
         sendPresenceUpdate('online');
       } else {
-        if (idleTimer) clearTimeout(idleTimer);
-        sendPresenceUpdate('idle');
+        // User switched tabs or minimized: wait 45s before transitioning to idle
+        if (hiddenTimer) clearTimeout(hiddenTimer);
+        hiddenTimer = setTimeout(() => {
+          if (document.visibilityState !== 'visible' && navigator.onLine) {
+            sendPresenceUpdate('idle');
+          }
+        }, 45000);
       }
     };
 
@@ -428,7 +475,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       currentPresenceStatusRef.current = 'offline';
     };
 
-    // Unload / pagehide event: best-effort mark offline with server timestamp
+    // Unload / pagehide event: mark offline immediately
     const handleBeforeUnload = () => {
       try {
         const userRef = doc(db, 'users', userId);
@@ -454,6 +501,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => {
       if (idleTimer) clearTimeout(idleTimer);
+      if (hiddenTimer) clearTimeout(hiddenTimer);
+      if (unsubRtdb) unsubRtdb();
       clearInterval(heartbeatInterval);
       activityEvents.forEach((evt) => window.removeEventListener(evt, handleUserActivity));
       window.removeEventListener('online', handleOnline);
@@ -462,15 +511,21 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('pagehide', handleBeforeUnload);
     };
-  }, [currentUser?.id]);
+  }, [currentUser?.id, currentUser?.showActiveStatus]);
 
   // Listen to real-time rooms
   useEffect(() => {
     if (!currentUser?.id) return;
     const currentUserId = currentUser.id;
 
-    const roomsCol = collection(db, 'rooms');
-    const unsub = onSnapshot(roomsCol, (snapshot) => {
+    const roomsQuery = query(
+      collection(db, 'rooms'),
+      or(
+        where('type', '==', 'group'),
+        where('participantIds', 'array-contains', currentUserId)
+      )
+    );
+    const unsub = onSnapshot(roomsQuery, (snapshot) => {
       const fetched: ChatRoom[] = [];
       snapshot.forEach((d) => {
         const roomData = d.data() as ChatRoom;
@@ -642,7 +697,15 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const currentUserId = currentUser.id;
 
     const callsCol = collection(db, 'calls');
-    const qCalls = query(callsCol, orderBy('createdAt', 'desc'), limit(15));
+    const qCalls = query(
+      callsCol,
+      or(
+        where('receiverId', '==', currentUserId),
+        where('callerId', '==', currentUserId)
+      ),
+      orderBy('createdAt', 'desc'),
+      limit(10)
+    );
 
     const unsub = onSnapshot(qCalls, (snapshot) => {
       let activeFound: CallSession | null = null;
@@ -706,6 +769,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         receiverName: targetBuddy.name,
         receiverAvatar: targetBuddy.avatarId,
         receiverCustomAvatar: targetBuddy.customAvatarUrl,
+        participantIds: [user.id, targetBuddy.id],
         status: 'calling',
         createdAt: Date.now(),
       };
@@ -959,6 +1023,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   // Track unread messages across all accessible rooms using user's lastReadTimestamps
+  const roomIdsKey = rawRooms.map((r) => r.id).sort().join(',');
   useEffect(() => {
     const user = currentUser;
     if (!user?.id || rawRooms.length === 0) return;
@@ -1002,7 +1067,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       unsubs.forEach((u) => u());
     };
-  }, [currentUser?.id, rawRooms, currentRoomId]);
+  }, [currentUser?.id, roomIdsKey, currentRoomId]);
 
   // Listen to all registered users from Firestore
   useEffect(() => {
@@ -1109,27 +1174,19 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             ? '🎨 Sent a sticker'
             : latest.content;
 
-        showPushNotification(`${latest.senderName} on MochiChat 🌸`, {
+        showPushNotification(`${latest.senderName} on Simi 🌸`, {
           body: msgPreview,
           tag: `msg-${latest.id}`,
         });
       }
 
-      if (unreadDirectMsgIds.length > 0) {
+      if (unreadDirectMsgIds.length > 0 && document.visibilityState === 'visible') {
         for (const msgId of unreadDirectMsgIds) {
           markedReadRef.current.add(msgId);
           const msgRef = doc(db, 'rooms', currentRoomId, 'messages', msgId);
-          getDoc(msgRef).then((snap) => {
-            if (snap.exists()) {
-              const currentData = snap.data() as ChatMessage;
-              const currentReadBy = currentData.readBy || [];
-              if (!currentReadBy.includes(currentUserId)) {
-                updateDoc(msgRef, {
-                  readBy: [...currentReadBy, currentUserId],
-                  readAt: currentData.readAt || Date.now(),
-                }).catch(() => {});
-              }
-            }
+          updateDoc(msgRef, {
+            readBy: arrayUnion(currentUserId),
+            readAt: Date.now(),
           }).catch(() => {});
         }
       }
@@ -1139,6 +1196,40 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => unsub();
   }, [currentUser?.id, currentRoomId, markRoomAsRead]);
+
+  // Mark unread messages in currentRoomId when tab becomes visible or focused
+  useEffect(() => {
+    if (!currentUser?.id || !currentRoomId) return;
+    const currentUserId = currentUser.id;
+
+    const handleFocusOrVisible = () => {
+      if (document.visibilityState === 'visible') {
+        markRoomAsRead(currentRoomId);
+        messages.forEach((msg) => {
+          if (
+            msg.senderId !== currentUserId &&
+            !(msg.readBy || []).includes(currentUserId) &&
+            !markedReadRef.current.has(msg.id)
+          ) {
+            markedReadRef.current.add(msg.id);
+            const msgRef = doc(db, 'rooms', currentRoomId, 'messages', msg.id);
+            updateDoc(msgRef, {
+              readBy: arrayUnion(currentUserId),
+              readAt: Date.now(),
+            }).catch(() => {});
+          }
+        });
+      }
+    };
+
+    window.addEventListener('focus', handleFocusOrVisible);
+    document.addEventListener('visibilitychange', handleFocusOrVisible);
+
+    return () => {
+      window.removeEventListener('focus', handleFocusOrVisible);
+      document.removeEventListener('visibilitychange', handleFocusOrVisible);
+    };
+  }, [currentUser?.id, currentRoomId, messages, markRoomAsRead]);
 
   // Real-time Typing Indicator Listener in Firestore
   useEffect(() => {
@@ -1398,8 +1489,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return 'BLOCKED_BY_OTHER';
       }
 
-      // 2. Mutual / direct buddy
-      if ((user.buddyIds || []).includes(targetUserId)) {
+      // 2. Mutual buddy (both must have each other in buddyIds)
+      const userHasTarget = (user.buddyIds || []).includes(targetUserId);
+      const targetHasUser = targetUser ? (targetUser.buddyIds || []).includes(user.id) : userHasTarget;
+      if (userHasTarget && targetHasUser) {
         return 'FRIENDS';
       }
 
@@ -1431,55 +1524,6 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return 'none';
     },
     [getRelationship]
-  );
-
-  const sendBuddyRequest = useCallback(
-    async (targetUser: UserProfile) => {
-      const user = currentUserRef.current;
-      if (!user || user.id === targetUser.id) return;
-
-      if ((user.blockedUserIds || []).includes(targetUser.id)) {
-        alert('You have blocked this user.');
-        return;
-      }
-      if ((targetUser.blockedUserIds || []).includes(user.id)) {
-        alert('This user is not available.');
-        return;
-      }
-      if ((user.buddyIds || []).includes(targetUser.id)) {
-        return; // Already buddies
-      }
-
-      if (isProcessingRequestRef.current.has(targetUser.id)) return;
-      isProcessingRequestRef.current.add(targetUser.id);
-      sounds.playClick();
-
-      const requestId = `${user.id}_${targetUser.id}`;
-      const reqDoc: BuddyRequest = {
-        id: requestId,
-        fromUserId: user.id,
-        fromUserName: user.name,
-        fromUserAvatar: user.avatarId,
-        toUserId: targetUser.id,
-        toUserName: targetUser.name,
-        toUserAvatar: targetUser.avatarId,
-        status: 'pending',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      };
-
-      // Optimistic update
-      setBuddyRequests((prev) => [...prev.filter((r) => r.id !== requestId), reqDoc]);
-
-      try {
-        await setDoc(doc(db, 'buddyRequests', requestId), cleanForFirestore(reqDoc), { merge: true });
-      } catch (e) {
-        console.error('Failed to send buddy request:', e);
-      } finally {
-        isProcessingRequestRef.current.delete(targetUser.id);
-      }
-    },
-    []
   );
 
   const acceptBuddyRequest = useCallback(
@@ -1593,6 +1637,64 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     },
     []
+  );
+
+  const sendBuddyRequest = useCallback(
+    async (targetUser: UserProfile) => {
+      const user = currentUserRef.current;
+      if (!user || user.id === targetUser.id) return;
+
+      if ((user.blockedUserIds || []).includes(targetUser.id)) {
+        alert('You have blocked this user.');
+        return;
+      }
+      if ((targetUser.blockedUserIds || []).includes(user.id)) {
+        alert('This user is not available.');
+        return;
+      }
+      if (getRelationship(targetUser.id) === 'FRIENDS') {
+        return; // Already buddies
+      }
+
+      // If target user already sent a pending request to us, auto-accept it immediately
+      const existingIncoming = buddyRequests.find(
+        (r) => r.fromUserId === targetUser.id && r.toUserId === user.id && r.status === 'pending'
+      );
+      if (existingIncoming) {
+        await acceptBuddyRequest(existingIncoming.id, targetUser.id);
+        return;
+      }
+
+      if (isProcessingRequestRef.current.has(targetUser.id)) return;
+      isProcessingRequestRef.current.add(targetUser.id);
+      sounds.playClick();
+
+      const requestId = `${user.id}_${targetUser.id}`;
+      const reqDoc: BuddyRequest = {
+        id: requestId,
+        fromUserId: user.id,
+        fromUserName: user.name,
+        fromUserAvatar: user.avatarId,
+        toUserId: targetUser.id,
+        toUserName: targetUser.name,
+        toUserAvatar: targetUser.avatarId,
+        status: 'pending',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+
+      // Optimistic update
+      setBuddyRequests((prev) => [...prev.filter((r) => r.id !== requestId), reqDoc]);
+
+      try {
+        await setDoc(doc(db, 'buddyRequests', requestId), cleanForFirestore(reqDoc), { merge: true });
+      } catch (e) {
+        console.error('Failed to send buddy request:', e);
+      } finally {
+        isProcessingRequestRef.current.delete(targetUser.id);
+      }
+    },
+    [getRelationship, buddyRequests, acceptBuddyRequest]
   );
 
   // Block / Unblock User
@@ -1813,10 +1915,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const user = currentUserRef.current;
       if (!user) return false;
       if (user.id === userId) return true;
-      if ((user.blockedUserIds || []).includes(userId)) return false;
-      return (user.buddyIds || []).includes(userId);
+      return getRelationship(userId) === 'FRIENDS';
     },
-    []
+    [getRelationship]
   );
 
   // Start Direct Message (DOES NOT call addBuddy!)
@@ -2176,8 +2277,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const groupRooms = rooms.filter((r) => r.type === 'group' || (!r.isDirect && r.type !== 'direct'));
   const directRooms = rooms.filter((r) => r.type === 'direct' || r.isDirect);
 
-  const buddyIdsList = currentUser?.buddyIds || [];
-  const buddies = activeUsers.filter((u) => u.id !== currentUser?.id && buddyIdsList.includes(u.id));
+  const buddies = useMemo(() => {
+    if (!currentUser?.id) return [];
+    return activeUsers.filter((u) => u.id !== currentUser.id && getRelationship(u.id) === 'FRIENDS');
+  }, [currentUser?.id, activeUsers, getRelationship]);
 
   const theme: ThemeColor = currentUser?.gender === 'male'
     ? 'midnight'

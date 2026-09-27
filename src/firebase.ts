@@ -9,6 +9,7 @@ import {
   Firestore,
 } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
+import { getDatabase, Database } from 'firebase/database';
 import firebaseConfig from '../firebase-applet-config.json';
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
@@ -28,8 +29,20 @@ try {
   firestoreDb = getFirestore(app, dbId);
 }
 
+// Initialize Realtime Database (for presence and ephemeral signaling where available)
+let rtdbInstance: Database | null = null;
+try {
+  const rtdbUrl = (firebaseConfig as any).databaseURL;
+  if (rtdbUrl) {
+    rtdbInstance = getDatabase(app, rtdbUrl);
+  }
+} catch {
+  rtdbInstance = null;
+}
+
 export const db = firestoreDb;
 export const auth = getAuth(app);
+export const rtdb = rtdbInstance;
 
 // Test firestore server connection on boot without breaking offline mode
 export async function testFirestoreConnection() {

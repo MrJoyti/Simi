@@ -245,8 +245,9 @@ export function getUserPresence(
   const formattedLastSeen = formatLastSeenAt(lastSeen);
   const shortLabel = formatLastSeenShort(lastSeen);
 
-  // Online freshness threshold: user.status === 'online' AND lastSeen within 90 seconds (~3.5 heartbeats)
-  if (user.status === 'online' && diffMs <= 90000) {
+  // 1. ONLINE: Active status confirmed if user.status is 'online' and last activity is within 3 minutes (180s)
+  // Even with background throttles, a connected user maintains online presence without false offline labels
+  if (user.status === 'online' && diffMs <= 180000) {
     return {
       state: 'online',
       isOnline: true,
@@ -259,21 +260,21 @@ export function getUserPresence(
     };
   }
 
-  // Idle threshold: user.status === 'idle' or lastSeen within 5 minutes (300,000ms)
-  if (user.status === 'idle' || diffMs <= 300000) {
+  // 2. IDLE: Explicitly idle state within reasonable activity window
+  if (user.status === 'idle' && diffMs <= 300000) {
     return {
       state: 'idle',
       isOnline: false,
       isIdle: true,
-      label: diffMs <= 90000 ? 'Idle' : formattedLastSeen,
-      shortLabel: diffMs <= 90000 ? 'Idle' : shortLabel,
+      label: 'Idle',
+      shortLabel: 'Idle',
       lastSeenAt: formattedLastSeen,
       formattedLastSeen,
       dotClass: 'bg-amber-400 ring-2 ring-amber-200',
     };
   }
 
-  // Stale heartbeat or status === 'offline': calculate effective offline state
+  // 3. OFFLINE: User explicitly offline or no heartbeat for > 3 minutes
   return {
     state: 'offline',
     isOnline: false,
