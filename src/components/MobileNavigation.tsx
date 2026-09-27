@@ -46,7 +46,11 @@ export const MobileNavigation: React.FC = () => {
         key={tab.id}
         onClick={() => {
           sounds.playClick();
-          setActiveMobileTab(tab.id);
+          if (activeMobileTab === tab.id) {
+            window.dispatchEvent(new CustomEvent('simi-scroll-to-top'));
+          } else {
+            setActiveMobileTab(tab.id);
+          }
         }}
         className={`flex-1 flex flex-col items-center justify-center py-1 relative transition-all active:scale-95 ${
           isActive

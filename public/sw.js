@@ -1,5 +1,5 @@
-// Service Worker for MochiChat PWA, Offline Cache & Push Notifications
-const CACHE_NAME = 'mochichat-offline-v3';
+// Service Worker for Simi PWA, Offline Cache & Push Notifications
+const CACHE_NAME = 'simi-app-v6';
 
 const STATIC_ASSETS_TO_CACHE = [
   '/',
@@ -74,34 +74,30 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static Assets (JS, CSS, SVGs, Fonts, Images) - Stale-while-revalidate / Cache-first with network fallback
+  // Static Assets (JS, CSS, SVGs, Fonts, Images) - Network-first, fallback to cache
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-            const responseClone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseClone);
-            });
-          }
-          return networkResponse;
-        })
-        .catch(() => cachedResponse);
-
-      return cachedResponse || fetchPromise;
-    })
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
+        }
+        return networkResponse;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
 
 // Handle Push event
 self.addEventListener('push', (event) => {
   let data = {
-    title: 'MochiChat 🌸',
+    title: 'Simi ✨',
     body: 'You have a new message!',
     icon: '/icon-192.png',
     badge: '/icon-192.png',
-    tag: 'mochichat-notification',
+    tag: 'simi-notification',
   };
 
   if (event.data) {

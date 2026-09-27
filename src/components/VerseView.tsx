@@ -19,6 +19,7 @@ import { canViewerAccessUserContent } from '../utils/presence';
 import { canViewProfile } from '../utils/privacy';
 
 export const VerseView: React.FC = () => {
+  const containerRef = React.useRef<HTMLDivElement>(null);
   const {
     currentUser,
     stories,
@@ -39,6 +40,15 @@ export const VerseView: React.FC = () => {
   const isMale = simiTheme.isMale;
   const [activeStoryIndex, setActiveStoryIndex] = useState<number | null>(null);
   const [verseTab, setVerseTab] = useState<'for_you' | 'following' | 'explore'>('for_you');
+
+  // Handle global scroll to top event from bottom navigation
+  React.useEffect(() => {
+    const handleScrollToTop = () => {
+      containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    window.addEventListener('simi-scroll-to-top', handleScrollToTop);
+    return () => window.removeEventListener('simi-scroll-to-top', handleScrollToTop);
+  }, []);
 
   // Local viewed stories tracking for immediate ring update
   const [viewedStoryIds, setViewedStoryIds] = useState<string[]>(() => {
@@ -151,12 +161,12 @@ export const VerseView: React.FC = () => {
 
   return (
     <div
-      className={`flex-1 flex flex-col min-h-0 w-full overflow-y-auto overscroll-y-contain transition-colors duration-200 select-none pb-10 ${
+      ref={containerRef}
+      className={`flex-1 flex flex-col min-h-0 w-full overflow-y-auto overflow-x-hidden transition-colors duration-200 select-none pb-24 ${
         isMale ? 'bg-[#0B0F17] text-slate-100' : 'bg-female-canvas text-slate-800'
       }`}
       style={{
         WebkitOverflowScrolling: 'touch',
-        touchAction: 'pan-y',
       }}
     >
       {/* 1. Sticky Compact Header: "Simi" ONLY + Actions (Search, Bell, +) */}
@@ -169,11 +179,15 @@ export const VerseView: React.FC = () => {
       >
         <div className="flex items-center justify-between">
           <h1
-            className={`text-2xl font-black italic tracking-wider select-none ${
+            onClick={() => {
+              containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            className={`text-2xl font-black italic tracking-wider select-none cursor-pointer active:scale-95 transition-transform ${
               isMale
                 ? 'bg-gradient-to-r from-blue-400 via-indigo-300 to-cyan-300 bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(59,130,246,0.5)]'
                 : 'bg-gradient-to-r from-rose-500 via-pink-500 to-rose-600 bg-clip-text text-transparent drop-shadow-[0_1px_4px_rgba(244,63,94,0.25)]'
             }`}
+            title="Tap to scroll to top"
           >
             Simi
           </h1>
@@ -260,10 +274,9 @@ export const VerseView: React.FC = () => {
         }`}
       >
         <div
-          className="flex items-center gap-3.5 overflow-x-auto scrollbar-none px-4 pt-2.5 pb-3.5"
+          className="flex items-center gap-3.5 overflow-x-auto scrollbar-none px-4 pt-3 pb-3.5"
           style={{
             WebkitOverflowScrolling: 'touch',
-            touchAction: 'pan-x',
           }}
         >
           {/* Add Story Button Card */}
