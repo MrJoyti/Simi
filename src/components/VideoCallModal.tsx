@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { sounds } from '../utils/sound';
 import { CallStatus } from '../types/chat';
+import { terminateCallSession } from '../services/callService';
 
 // Production-ready ICE Servers with reliable Google STUN servers and optional TURN fallback
 const getIceServers = (): RTCConfiguration => {
@@ -355,6 +356,9 @@ export const VideoCallModal: React.FC = () => {
       console.log('[CALL] Connection state changed:', pc.connectionState);
       if (pc.connectionState === 'connected') {
         setCallState('connected');
+        if (activeCall?.id) {
+          updateDoc(doc(db, 'calls', activeCall.id), { status: 'connected' }).catch(() => {});
+        }
       } else if (pc.connectionState === 'connecting') {
         setCallState('connecting');
       } else if (pc.connectionState === 'disconnected') {
@@ -593,7 +597,6 @@ export const VideoCallModal: React.FC = () => {
           type: answerDescription.type,
           sdp: answerDescription.sdp,
         },
-        status: 'connected',
       });
 
       setCallState('connecting');
@@ -628,11 +631,7 @@ export const VideoCallModal: React.FC = () => {
     sounds.playClick();
     if (!activeCall) return;
     try {
-      const callDocRef = doc(db, 'calls', activeCall.id);
-      await updateDoc(callDocRef, {
-        status: 'rejected',
-        endedAt: Date.now(),
-      });
+      await terminateCallSession(activeCall.id, 'rejected', activeCall.callerId, activeCall.receiverId);
     } catch (e) {
       console.warn('Failed to update reject status:', e);
     }
@@ -645,11 +644,7 @@ export const VideoCallModal: React.FC = () => {
     sounds.playClick();
     if (activeCall) {
       try {
-        const callDocRef = doc(db, 'calls', activeCall.id);
-        await updateDoc(callDocRef, {
-          status: 'ended',
-          endedAt: Date.now(),
-        });
+        await terminateCallSession(activeCall.id, 'ended', activeCall.callerId, activeCall.receiverId);
       } catch (e) {
         console.warn('Failed to update end status:', e);
       }

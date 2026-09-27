@@ -1,26 +1,36 @@
 const CLOUDINARY_CLOUD_NAME = 'rkk2ooyi';
 const CLOUDINARY_UPLOAD_PRESET = 'Simisikder';
-const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
 
 export interface CloudinaryUploadOptions {
   folder?: string;
+  resourceType?: 'image' | 'video' | 'raw' | 'auto';
   onProgress?: (progress: number) => void;
 }
 
 /**
- * Uploads an image file to Cloudinary using an unsigned upload preset
- * and XMLHttpRequest to support progress tracking.
+ * Uploads an image, video, or audio blob to Cloudinary using an unsigned upload preset.
+ * Supports progress tracking and never stores Base64 blobs in Firestore!
  */
-export async function uploadImageToCloudinary(
-  file: File,
-  folder?: string,
-  onProgress?: (progress: number) => void
+export async function uploadMediaToCloudinary(
+  fileOrBlob: File | Blob,
+  options: CloudinaryUploadOptions = {}
 ): Promise<string> {
+  const { folder, resourceType = 'auto', onProgress } = options;
+  const uploadUrl = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`;
+
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     const formData = new FormData();
 
-    formData.append('file', file);
+    // If it's a raw blob (e.g. voice note audio/webm), supply a filename
+    if (fileOrBlob instanceof File) {
+      formData.append('file', fileOrBlob);
+    } else {
+      const mime = fileOrBlob.type || 'audio/webm';
+      const ext = mime.includes('webm') ? 'webm' : mime.includes('ogg') ? 'ogg' : 'mp3';
+      formData.append('file', fileOrBlob, `recording_${Date.now()}.${ext}`);
+    }
+
     formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
     if (folder) {
       formData.append('folder', folder);
@@ -44,7 +54,7 @@ export async function uploadImageToCloudinary(
           } else {
             reject(new Error(response?.error?.message || 'Malformed Cloudinary response: missing secure_url'));
           }
-        } catch (parseErr) {
+        } catch {
           reject(new Error('Failed to parse response from Cloudinary'));
         }
       } else {
@@ -58,7 +68,7 @@ export async function uploadImageToCloudinary(
     };
 
     xhr.onerror = () => {
-      reject(new Error('Network error occurred while uploading image to Cloudinary'));
+      reject(new Error('Network error occurred while uploading media to Cloudinary'));
     };
 
     xhr.ontimeout = () => {
@@ -69,7 +79,18 @@ export async function uploadImageToCloudinary(
       reject(new Error('Cloudinary upload was aborted'));
     };
 
-    xhr.open('POST', CLOUDINARY_UPLOAD_URL, true);
+    xhr.open('POST', uploadUrl, true);
     xhr.send(formData);
   });
+}
+
+/**
+ * Backward-compatible helper for image uploads
+ */
+export async function uploadImageToCloudinary(
+  file: File,
+  folder?: string,
+  onProgress?: (progress: number) => void
+): Promise<string> {
+  return uploadMediaToCloudinary(file, { folder, resourceType: 'image', onProgress });
 }

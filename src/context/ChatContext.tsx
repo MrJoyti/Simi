@@ -60,6 +60,32 @@ import {
   showPushNotification,
 } from '../utils/notifications';
 import {
+  initializeRealtimePresence,
+  teardownRealtimePresence,
+  subscribeToUserPresence,
+  updateUserPresenceStatus,
+} from '../services/presenceService';
+import {
+  RelationshipDoc,
+  getDeterministicPairId,
+  resolveRelationshipState,
+  sendCanonicalFriendRequest,
+  acceptCanonicalFriendRequest,
+  declineOrCancelCanonicalRequest,
+  removeCanonicalFriend,
+  blockCanonicalUser,
+  unblockCanonicalUser,
+  subscribeUserRelationships,
+} from '../utils/relationship';
+import {
+  initiateCallWithLock,
+  terminateCallSession,
+} from '../services/callService';
+import {
+  sendCanonicalMessage,
+  processDueScheduledMessages,
+} from '../services/messageService';
+import {
   DUMMY_USERS,
   DUMMY_FEED_POSTS,
   DUMMY_STORIES,
@@ -294,30 +320,57 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [dismissToast]);
 
-  // Social feed posts state (persisted locally with fallback to DUMMY_FEED_POSTS)
+  // Social feed posts state (persisted in Firestore with local cache fallback)
   const [feedPosts, setFeedPosts] = useState<SocialFeedPost[]>(() => {
     try {
+      const isDemo = import.meta.env.VITE_DEMO_MODE === 'true';
       const cachedProfile = localStorage.getItem('mochichat_profile_cache');
       const isMale = cachedProfile ? JSON.parse(cachedProfile)?.gender === 'male' : false;
       const key = isMale ? 'simi_male_feed_posts' : 'simi_female_feed_posts';
       const saved = localStorage.getItem(key);
       const parsed = saved ? JSON.parse(saved) : [];
       if (parsed && parsed.length > 0) return parsed;
-      return DUMMY_FEED_POSTS;
+      return isDemo ? DUMMY_FEED_POSTS : [];
     } catch {
-      return DUMMY_FEED_POSTS;
+      return import.meta.env.VITE_DEMO_MODE === 'true' ? DUMMY_FEED_POSTS : [];
     }
   });
 
-  const addFeedPost = useCallback((postData: { content: string; images?: string[] }) => {
+  // Listen to Firestore posts collection in real-time
+  useEffect(() => {
+    const qPosts = query(collection(db, 'posts'), orderBy('createdAt', 'desc'), limit(50));
+    const unsub = onSnapshot(qPosts, (snap) => {
+      if (!snap.empty) {
+        const firestorePosts: SocialFeedPost[] = snap.docs.map((d) => ({ id: d.id, ...d.data() } as SocialFeedPost));
+        setFeedPosts((prev) => {
+          const isDemo = import.meta.env.VITE_DEMO_MODE === 'true';
+          const base = isDemo ? DUMMY_FEED_POSTS : [];
+          const combined = [...firestorePosts];
+          base.forEach((bp) => {
+            if (!combined.some((cp) => cp.id === bp.id)) {
+              combined.push(bp);
+            }
+          });
+          return combined;
+        });
+      }
+    }, (err) => {
+      console.warn('Posts collection snapshot note:', err);
+    });
+    return () => unsub();
+  }, []);
+
+  const addFeedPost = useCallback(async (postData: { content: string; images?: string[] }) => {
     const user = currentUserRef.current;
+    if (!user) return;
     const isMale = user?.gender === 'male';
+    const postId = `post_${Date.now()}`;
     const newPost: SocialFeedPost = {
-      id: `post_${Date.now()}`,
-      authorId: user?.id || 'current_user',
-      authorName: user?.name || (isMale ? 'Joyti Chakraborty' : 'Maya Islam'),
-      authorAvatar: user?.avatarId || (isMale ? 'falcon' : 'bunny'),
-      authorCustomAvatar: user?.customAvatarUrl,
+      id: postId,
+      authorId: user.id,
+      authorName: user.name,
+      authorAvatar: user.avatarId,
+      authorCustomAvatar: user.customAvatarUrl,
       createdAt: Date.now(),
       timeAgo: 'Just now',
       isPublic: true,
@@ -329,17 +382,15 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isLiked: false,
       isSaved: false,
     };
-    setFeedPosts((prev) => {
-      const updated = [newPost, ...prev];
-      const storageKey = isMale ? 'simi_male_feed_posts' : 'simi_female_feed_posts';
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(updated));
-      } catch {
-        // ignore
-      }
-      return updated;
-    });
-  }, []);
+    setFeedPosts((prev) => [newPost, ...prev]);
+    const storageKey = isMale ? 'simi_male_feed_posts' : 'simi_female_feed_posts';
+    try {
+      localStorage.setItem(storageKey, JSON.stringify([newPost, ...feedPosts]));
+      await setDoc(doc(db, 'posts', postId), cleanForFirestore(newPost));
+    } catch (err) {
+      console.warn('Error saving post to Firestore:', err);
+    }
+  }, [feedPosts]);
 
   const toggleLikePost = useCallback((postId: string) => {
     setFeedPosts((prev) =>
@@ -492,65 +543,14 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!currentUser?.id) return;
     const userId = auth.currentUser?.uid || currentUser.id;
 
+    const teardownPresence = initializeRealtimePresence(userId, currentUser);
+
     const sendPresenceUpdate = async (status: 'online' | 'idle' | 'offline') => {
-      const targetStatus = currentUser.showActiveStatus === false ? 'offline' : status;
-      const now = Date.now();
-      // Throttle rapid repeated identical writes (10 seconds minimum unless going offline or coming online)
-      if (
-        targetStatus === currentPresenceStatusRef.current &&
-        now - lastPresenceWriteRef.current < 10000 &&
-        targetStatus !== 'offline'
-      ) {
-        return;
-      }
-
-      currentPresenceStatusRef.current = targetStatus;
-      lastPresenceWriteRef.current = now;
-
-      try {
-        const userRef = doc(db, 'users', userId);
-        await updateDoc(userRef, {
-          status: targetStatus,
-          lastSeen: serverTimestamp(),
-        });
-      } catch {
-        // silent fail
-      }
+      await updateUserPresenceStatus(userId, status, currentUser.showActiveStatus);
+      currentPresenceStatusRef.current = status;
+      lastPresenceWriteRef.current = Date.now();
     };
     sendPresenceUpdateRef.current = sendPresenceUpdate;
-
-    // 1. Firebase Realtime Database true connection-aware presence if RTDB is available
-    let unsubRtdb: (() => void) | null = null;
-    if (rtdb) {
-      try {
-        const connectedRef = rtdbRef(rtdb, '.info/connected');
-        const userStatusRtdbRef = rtdbRef(rtdb, `/status/${userId}`);
-
-        unsubRtdb = rtdbOnValue(connectedRef, (snapshot) => {
-          if (snapshot.val() === true) {
-            rtdbOnDisconnect(userStatusRtdbRef)
-              .set({
-                state: 'offline',
-                lastSeen: rtdbServerTimestamp(),
-              })
-              .then(() => {
-                rtdbSet(userStatusRtdbRef, {
-                  state: currentUser.showActiveStatus === false ? 'offline' : 'online',
-                  lastSeen: rtdbServerTimestamp(),
-                });
-              })
-              .catch(() => {});
-          }
-        });
-      } catch (err) {
-        console.warn('RTDB presence note:', err);
-      }
-    }
-
-    // 2. Immediate presence signal on mount/boot
-    if (navigator.onLine) {
-      sendPresenceUpdate('online');
-    }
 
     // Idle detection timer (4 minutes inactivity)
     let idleTimer: NodeJS.Timeout | null = null;
@@ -623,15 +623,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Unload / pagehide event: mark offline immediately
     const handleBeforeUnload = () => {
-      try {
-        const userRef = doc(db, 'users', userId);
-        updateDoc(userRef, {
-          status: 'offline',
-          lastSeen: serverTimestamp(),
-        }).catch(() => {});
-      } catch {
-        // ignore
-      }
+      teardownRealtimePresence(userId);
     };
 
     resetIdleTimer();
@@ -648,7 +640,6 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       if (idleTimer) clearTimeout(idleTimer);
       if (hiddenTimer) clearTimeout(hiddenTimer);
-      if (unsubRtdb) unsubRtdb();
       clearInterval(heartbeatInterval);
       activityEvents.forEach((evt) => window.removeEventListener(evt, handleUserActivity));
       window.removeEventListener('online', handleOnline);
@@ -656,6 +647,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('pagehide', handleBeforeUnload);
+      teardownPresence();
     };
   }, [currentUser?.id, currentUser?.showActiveStatus]);
 
@@ -778,12 +770,14 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       });
 
-      // Merge with realistic dummy stories from friends
-      DUMMY_STORIES.forEach((dummyStory) => {
-        if (!validStories.some((s) => s.id === dummyStory.id)) {
-          validStories.push(dummyStory);
-        }
-      });
+      // Merge with realistic dummy stories from friends if demo mode is enabled
+      if (import.meta.env.VITE_DEMO_MODE === 'true') {
+        DUMMY_STORIES.forEach((dummyStory) => {
+          if (!validStories.some((s) => s.id === dummyStory.id)) {
+            validStories.push(dummyStory);
+          }
+        });
+      }
 
       setStories(validStories);
     }, (err) => {
@@ -828,64 +822,19 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => clearInterval(interval);
   }, []);
 
-  // Client-side background trigger tick: delivers due scheduled messages directly into Firestore
+  // Client-side background trigger tick: delivers due scheduled messages directly into Firestore with transaction idempotency
   useEffect(() => {
+    if (!currentUser?.id) return;
     const interval = setInterval(async () => {
-      if (!currentUser?.id) return;
-      const due = scheduledMessages.filter(
-        (m) => m.status === 'scheduled' && m.scheduledFor <= Date.now()
-      );
-      if (due.length > 0) {
-        for (const msg of due) {
-          try {
-            const msgDocRef = doc(db, 'rooms', msg.roomId, 'messages', msg.id);
-            await setDoc(msgDocRef, cleanForFirestore({
-              id: msg.id,
-              roomId: msg.roomId,
-              senderId: msg.senderId,
-              senderName: msg.senderName,
-              senderAvatar: msg.senderAvatar,
-              senderCustomAvatar: msg.senderCustomAvatar,
-              senderBadge: msg.senderBadge,
-              senderTheme: msg.senderTheme,
-              type: msg.type,
-              content: msg.content,
-              attachmentUrl: msg.attachmentUrl,
-              audioDuration: msg.audioDuration,
-              reactions: {},
-              replyTo: msg.replyTo,
-              timestamp: Date.now(),
-              readBy: [msg.senderId],
-            }));
-
-            const roomDocRef = doc(db, 'rooms', msg.roomId);
-            const previewText =
-              msg.type === 'sticker'
-                ? 'Sticker'
-                : msg.type === 'voice'
-                ? 'Voice note'
-                : msg.type === 'image'
-                ? 'Photo'
-                : msg.content.slice(0, 35);
-
-            await updateDoc(roomDocRef, {
-              lastMessage: previewText,
-              lastMessageTime: Date.now(),
-            }).catch(() => {});
-
-            await updateDoc(doc(db, 'scheduledMessages', msg.id), {
-              status: 'sent',
-              sentAt: Date.now(),
-            });
-          } catch (e) {
-            console.warn('Scheduled message client delivery error:', e);
-          }
+      await processDueScheduledMessages(currentUser.id, (sentMsg) => {
+        if (sentMsg.roomId === currentRoomId) {
+          setMessages((prev) => (prev.some((m) => m.id === sentMsg.id) ? prev : [...prev, sentMsg]));
         }
-      }
-    }, 3000);
+      });
+    }, 4000);
 
     return () => clearInterval(interval);
-  }, [currentUser?.id, scheduledMessages]);
+  }, [currentUser?.id, currentRoomId]);
 
   // Real-time Incoming Video Call Listener for Current User (reads calls collection safely)
   useEffect(() => {
@@ -970,34 +919,21 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       sounds.playSend();
+      const res = await initiateCallWithLock(user, targetBuddy, callType, currentRoomId);
+      if (!res.success) {
+        if (res.reason === 'busy') {
+          showToast(`${targetBuddy.name} is currently in another call.`, 'warning');
+        } else {
+          showToast('Failed to initiate call. Please try again.', 'error');
+        }
+        return;
+      }
 
-      const callId = 'call_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
-      const callData: CallSession = {
-        id: callId,
-        roomId: currentRoomId,
-        callType,
-        callerId: user.id,
-        callerName: user.name,
-        callerAvatar: user.avatarId,
-        callerCustomAvatar: user.customAvatarUrl,
-        receiverId: targetBuddy.id,
-        receiverName: targetBuddy.name,
-        receiverAvatar: targetBuddy.avatarId,
-        receiverCustomAvatar: targetBuddy.customAvatarUrl,
-        participantIds: [user.id, targetBuddy.id],
-        status: 'calling',
-        createdAt: Date.now(),
-      };
-
-      try {
-        const callRef = doc(db, 'calls', callId);
-        await setDoc(callRef, cleanForFirestore(callData));
-        setActiveCall(callData);
-      } catch (err) {
-        console.error('Failed to initiate call:', err);
+      if (res.callSession) {
+        setActiveCall(res.callSession);
       }
     },
-    [currentRoomId]
+    [currentRoomId, showToast]
   );
 
   const startVideoCall = useCallback(
@@ -1017,24 +953,19 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Answer Call (Receiver)
   const answerCall = useCallback(async () => {
     if (!activeCall) return;
-    try {
-      const callRef = doc(db, 'calls', activeCall.id);
-      await updateDoc(callRef, { status: 'connected' });
-      setActiveCall((prev) => (prev ? { ...prev, status: 'connected' } : null));
-    } catch (err) {
-      console.error('Failed to answer call:', err);
-    }
+    // Receiver connection is established inside VideoCallModal WebRTC flow
+    setActiveCall((prev) => (prev ? { ...prev, status: 'connecting' } : null));
   }, [activeCall]);
 
   // Reject Call (Receiver)
   const rejectCall = useCallback(async () => {
     if (!activeCall) return;
     try {
-      const callRef = doc(db, 'calls', activeCall.id);
-      await updateDoc(callRef, { status: 'rejected', endedAt: Date.now() });
-      setActiveCall(null);
+      await terminateCallSession(activeCall.id, 'rejected', activeCall.callerId, activeCall.receiverId);
     } catch (err) {
       console.error('Failed to reject call:', err);
+    } finally {
+      setActiveCall(null);
     }
   }, [activeCall]);
 
@@ -1120,11 +1051,11 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const endCall = useCallback(async () => {
     if (!activeCall) return;
     try {
-      const callRef = doc(db, 'calls', activeCall.id);
-      await updateDoc(callRef, { status: 'ended', endedAt: Date.now() });
-      setActiveCall(null);
+      await terminateCallSession(activeCall.id, 'ended', activeCall.callerId, activeCall.receiverId);
     } catch (err) {
       console.error('Failed to end call:', err);
+    } finally {
+      setActiveCall(null);
     }
   }, [activeCall]);
 
@@ -1308,39 +1239,20 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         list.push(currentUserRef.current);
       }
 
-      // Merge with comprehensive dummy accounts and their mutual friendship
-      const initialFriendIds = ['user_tanvir_ahmed', 'user_mira_vibe', 'user_arif_hasan', 'user_nusrat_jahan'];
-      DUMMY_USERS.forEach((dummy) => {
-        if (!list.some((u) => u.id === dummy.id || u.username === dummy.username)) {
-          const isInitialFriend = initialFriendIds.includes(dummy.id);
-          list.push({
-            ...dummy,
-            buddyIds: isInitialFriend
-              ? Array.from(new Set([...(dummy.buddyIds || []), currentUserId]))
-              : (dummy.buddyIds || []),
-          });
-        }
-      });
-
-      // Auto-reconcile mutual buddies: if another user in activeUsers already has me in their buddyIds,
-      // make sure I also have them in my buddyIds in local state and Firestore!
-      const usersWhoHaveMeAsBuddy = list.filter((u) => u.id !== currentUserId && (u.buddyIds || []).includes(currentUserId));
-      if (usersWhoHaveMeAsBuddy.length > 0) {
-        const missingFromMyBuddies = usersWhoHaveMeAsBuddy
-          .map((u) => u.id)
-          .filter((id) => !(currentUserRef.current?.buddyIds || []).includes(id));
-        if (missingFromMyBuddies.length > 0) {
-          setCurrentUser((prev) => {
-            if (!prev) return prev;
-            return {
-              ...prev,
-              buddyIds: Array.from(new Set([...(prev.buddyIds || []), ...missingFromMyBuddies])),
-            };
-          });
-          updateDoc(doc(db, 'users', currentUserId), {
-            buddyIds: arrayUnion(...missingFromMyBuddies),
-          }).catch(() => {});
-        }
+      // Merge with comprehensive dummy accounts if demo mode is enabled
+      if (import.meta.env.VITE_DEMO_MODE === 'true') {
+        const initialFriendIds = ['user_tanvir_ahmed', 'user_mira_vibe', 'user_arif_hasan', 'user_nusrat_jahan'];
+        DUMMY_USERS.forEach((dummy) => {
+          if (!list.some((u) => u.id === dummy.id || u.username === dummy.username)) {
+            const isInitialFriend = initialFriendIds.includes(dummy.id);
+            list.push({
+              ...dummy,
+              buddyIds: isInitialFriend
+                ? Array.from(new Set([...(dummy.buddyIds || []), currentUserId]))
+                : (dummy.buddyIds || []),
+            });
+          }
+        });
       }
 
       setActiveUsers(list);
@@ -1571,23 +1483,48 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     markRoomAsRead(newRoomId);
   }, [currentRoomId, markRoomAsRead]);
 
-  // Update Profile
+  // Update Profile with whitelist to prevent tampering with presence or buddyIds
   const updateProfile = useCallback(async (updates: Partial<UserProfile>) => {
     const current = currentUserRef.current;
     if (!current) return;
+
+    const allowedKeys: (keyof UserProfile)[] = [
+      'name',
+      'username',
+      'bio',
+      'gender',
+      'avatarId',
+      'customAvatarUrl',
+      'coverUrl',
+      'theme',
+      'chatPattern',
+      'badge',
+      'moodEmoji',
+      'moodText',
+      'location',
+      'showActiveStatus',
+      'privacyVisibility',
+      'soundEnabled',
+      'lastReadTimestamps',
+    ];
+
+    const sanitizedUpdates: Partial<UserProfile> = {};
+    for (const key of allowedKeys) {
+      if (key in updates && updates[key] !== undefined) {
+        (sanitizedUpdates as any)[key] = updates[key];
+      }
+    }
+
     const updated: UserProfile = {
       ...current,
-      ...updates,
-      buddyIds: updates.buddyIds || current.buddyIds || [],
-      lastReadTimestamps: updates.lastReadTimestamps || current.lastReadTimestamps || {},
-      lastSeen: Date.now(),
+      ...sanitizedUpdates,
     };
     setCurrentUser(updated);
 
     try {
       localStorage.setItem('mochichat_profile_cache', JSON.stringify(updated));
       const userRef = doc(db, 'users', current.id);
-      await setDoc(userRef, cleanForFirestore(updated), { merge: true });
+      await setDoc(userRef, cleanForFirestore(sanitizedUpdates), { merge: true });
     } catch (err) {
       console.error('Error updating profile in Firestore:', err);
     }
@@ -1644,185 +1581,66 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [activeUsers]
   );
 
-  // Add Buddy
-  const addBuddy = useCallback(
-    async (targetUser: UserProfile) => {
-      const user = currentUserRef.current;
-      if (!user || targetUser.id === user.id) return;
-      sounds.playReceive();
+  const [canonicalRelationships, setCanonicalRelationships] = useState<Map<string, RelationshipDoc>>(new Map());
 
-      const currentBuddyIds = user.buddyIds || [];
-      if (!currentBuddyIds.includes(targetUser.id)) {
-        const updatedBuddies = [...currentBuddyIds, targetUser.id];
-        await updateProfile({ buddyIds: updatedBuddies });
-      }
+  // Subscribe to canonical relationships
+  useEffect(() => {
+    if (!currentUser?.id) {
+      setCanonicalRelationships(new Map());
+      return;
+    }
+    const unsub = subscribeUserRelationships(currentUser.id, (map) => {
+      setCanonicalRelationships(map);
+    });
+    return () => unsub();
+  }, [currentUser?.id]);
 
-      try {
-        const targetRef = doc(db, 'users', targetUser.id);
-        const snap = await getDoc(targetRef);
-        if (snap.exists()) {
-          const targetData = snap.data() as UserProfile;
-          const targetBuddies = targetData.buddyIds || [];
-          if (!targetBuddies.includes(user.id)) {
-            await updateDoc(targetRef, {
-              buddyIds: [...targetBuddies, user.id],
-            });
-          }
-        }
-      } catch (e) {
-        // ignore
-      }
-
-      confetti({
-        particleCount: 40,
-        spread: 50,
-        origin: { y: 0.7 },
-      });
-    },
-    [updateProfile]
-  );
-
-  const [buddyRequests, setBuddyRequests] = useState<BuddyRequest[]>([]);
   const [showConversationInfoDrawer, setShowConversationInfoDrawer] = useState(false);
   const [selectedProfileUser, setSelectedProfileUser] = useState<UserProfile | null>(null);
 
-  const knownIncomingReqIdsRef = useRef<Set<string>>(new Set());
-  const isReqListenerInitRef = useRef<boolean>(false);
+  // Backward-compatible derived buddyRequests list for notifications / UI
+  const buddyRequests = useMemo<BuddyRequest[]>(() => {
+    if (!currentUser?.id) return [];
+    const list: BuddyRequest[] = [];
+    canonicalRelationships.forEach((rel) => {
+      const otherId = rel.participantIds.find((id) => id !== currentUser.id);
+      if (!otherId) return;
+      const otherUser = activeUsers.find((u) => u.id === otherId);
 
-  // Firestore listener for buddyRequests involving currentUser
-  useEffect(() => {
-    if (!currentUser?.id) {
-      setBuddyRequests([]);
-      knownIncomingReqIdsRef.current.clear();
-      isReqListenerInitRef.current = false;
-      return;
-    }
-    const currentUserId = currentUser.id;
-
-    const qFrom = query(collection(db, 'buddyRequests'), where('fromUserId', '==', currentUserId));
-    const qTo = query(collection(db, 'buddyRequests'), where('toUserId', '==', currentUserId));
-
-    const unsubFrom = onSnapshot(qFrom, (snapFrom) => {
-      const fromList = snapFrom.docs.map((d) => ({ id: d.id, ...d.data() } as BuddyRequest));
-      setBuddyRequests((prev) => {
-        const otherList = prev.filter((r) => r.fromUserId !== currentUserId);
-        return [...otherList, ...fromList];
+      list.push({
+        id: rel.id,
+        fromUserId: rel.requestedBy,
+        fromUserName: rel.requestedBy === currentUser.id ? currentUser.name : (otherUser?.name || 'User'),
+        fromUserAvatar: rel.requestedBy === currentUser.id ? currentUser.avatarId : (otherUser?.avatarId || 'cat'),
+        toUserId: rel.requestedBy === currentUser.id ? otherId : currentUser.id,
+        toUserName: rel.requestedBy === currentUser.id ? (otherUser?.name || 'User') : currentUser.name,
+        toUserAvatar: rel.requestedBy === currentUser.id ? (otherUser?.avatarId || 'cat') : currentUser.avatarId,
+        status: rel.state === 'friends' ? 'accepted' : rel.state === 'pending' ? 'pending' : 'declined',
+        createdAt: rel.createdAt,
+        updatedAt: rel.updatedAt,
       });
-
-      // When the recipient accepts our request, immediately update our own buddyIds!
-      fromList.forEach((req) => {
-        if (req.status === 'accepted' && req.toUserId) {
-          const user = currentUserRef.current;
-          if (user && !(user.buddyIds || []).includes(req.toUserId)) {
-            setCurrentUser((prev) =>
-              prev ? { ...prev, buddyIds: Array.from(new Set([...(prev.buddyIds || []), req.toUserId])) } : null
-            );
-            updateDoc(doc(db, 'users', currentUserId), {
-              buddyIds: arrayUnion(req.toUserId),
-            }).catch(() => {});
-            sounds.playReceive();
-            confetti({
-              particleCount: 40,
-              spread: 50,
-              origin: { y: 0.7 },
-            });
-          }
-        }
-      });
-    }, (err) => {
-      console.warn('Buddy requests from listener note:', err);
     });
-
-    const unsubTo = onSnapshot(qTo, (snapTo) => {
-      const toList = snapTo.docs.map((d) => ({ id: d.id, ...d.data() } as BuddyRequest));
-      const pendingIncoming = toList.filter((r) => r.status === 'pending');
-
-      if (isReqListenerInitRef.current) {
-        pendingIncoming.forEach((req) => {
-          if (!knownIncomingReqIdsRef.current.has(req.id)) {
-            // Play notification sound
-            sounds.playReceive();
-            // Show push notification
-            showPushNotification('New Buddy Request', {
-              body: `${req.fromUserName} sent you a buddy request!`,
-              tag: `buddy-req-${req.id}`,
-            });
-          }
-        });
-      } else {
-        isReqListenerInitRef.current = true;
-      }
-
-      knownIncomingReqIdsRef.current = new Set(pendingIncoming.map((r) => r.id));
-
-      setBuddyRequests((prev) => {
-        const otherList = prev.filter((r) => r.toUserId !== currentUserId);
-        return [...otherList, ...toList];
-      });
-    }, (err) => {
-      console.warn('Buddy requests to listener note:', err);
-    });
-
-    return () => {
-      unsubFrom();
-      unsubTo();
-    };
-  }, [currentUser?.id]);
-
-  const isProcessingRequestRef = useRef<Set<string>>(new Set());
-
-  // Check if target user has blocked current user
-  const isBlockedBy = useCallback(
-    (targetUserId: string): boolean => {
-      const targetUser = activeUsers.find((u) => u.id === targetUserId);
-      if (!targetUser || !currentUser) return false;
-      return (targetUser.blockedUserIds || []).includes(currentUser.id);
-    },
-    [activeUsers, currentUser]
-  );
+    return list;
+  }, [canonicalRelationships, currentUser, activeUsers]);
 
   // Canonical Relationship State between current user and target user
   const getRelationship = useCallback(
     (targetUserId: string): RelationshipState => {
       const user = currentUserRef.current;
-      if (!user || user.id === targetUserId) return 'NONE';
+      if (!user || !targetUserId || user.id === targetUserId) return 'NONE';
 
-      // 1. Blocking priority
-      if ((user.blockedUserIds || []).includes(targetUserId)) {
-        return 'BLOCKED_BY_ME';
-      }
-      const targetUser = activeUsers.find((u) => u.id === targetUserId);
-      if (targetUser && (targetUser.blockedUserIds || []).includes(user.id)) {
-        return 'BLOCKED_BY_OTHER';
-      }
+      const pairId = getDeterministicPairId(user.id, targetUserId);
+      const relDoc = canonicalRelationships.get(pairId);
 
-      // 2. Mutual buddy (either user has target in buddyIds, or an accepted request exists between them)
-      const userHasTarget = (user.buddyIds || []).includes(targetUserId);
-      const targetHasUser = targetUser ? (targetUser.buddyIds || []).includes(user.id) : false;
-      const hasAcceptedRequest = buddyRequests.some(
-        (r) =>
-          r.status === 'accepted' &&
-          ((r.fromUserId === user.id && r.toUserId === targetUserId) ||
-            (r.fromUserId === targetUserId && r.toUserId === user.id))
+      return resolveRelationshipState(
+        user.id,
+        targetUserId,
+        relDoc,
+        user.buddyIds,
+        user.blockedUserIds
       );
-      if (userHasTarget || targetHasUser || hasAcceptedRequest) {
-        return 'FRIENDS';
-      }
-
-      // 3. Pending requests
-      const pendingOutgoing = buddyRequests.find(
-        (r) => r.fromUserId === user.id && r.toUserId === targetUserId && r.status === 'pending'
-      );
-      if (pendingOutgoing) return 'OUTGOING_PENDING';
-
-      const pendingIncoming = buddyRequests.find(
-        (r) => r.fromUserId === targetUserId && r.toUserId === user.id && r.status === 'pending'
-      );
-      if (pendingIncoming) return 'INCOMING_PENDING';
-
-      return 'NONE';
     },
-    [activeUsers, buddyRequests]
+    [canonicalRelationships]
   );
 
   // Backward-compatible adapter for UI components
@@ -1839,106 +1657,69 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [getRelationship]
   );
 
+  // Add Buddy / Send Friend Request using transaction-safe canonical relationship
+  const addBuddy = useCallback(
+    async (targetUser: UserProfile) => {
+      const user = currentUserRef.current;
+      if (!user || !targetUser?.id || user.id === targetUser.id) return;
+
+      sounds.playSend();
+      const res = await sendCanonicalFriendRequest(user.id, targetUser.id);
+      if (!res.success) {
+        showToast(res.error || 'Could not send friend request.', 'warning');
+        return;
+      }
+
+      if (res.state === 'FRIENDS') {
+        sounds.playReceive();
+        confetti({
+          particleCount: 45,
+          spread: 55,
+          origin: { y: 0.7 },
+        });
+        showToast(`You and ${targetUser.name} are now buddies! 🎉`, 'success');
+      } else {
+        showToast(`Friend request sent to ${targetUser.name}`, 'info');
+      }
+    },
+    [showToast]
+  );
+
+  const sendBuddyRequest = addBuddy;
+
   const acceptBuddyRequest = useCallback(
     async (requestIdOrFromUserId: string, fromUserIdParam?: string) => {
       const user = currentUserRef.current;
       if (!user) return;
       sounds.playReceive();
 
-      const myUid = auth.currentUser?.uid || user.id;
-
-      // Determine the exact other user ID
-      let fromUserId = fromUserIdParam || '';
-      if (!fromUserId) {
+      let targetUserId = fromUserIdParam || '';
+      if (!targetUserId) {
         if (requestIdOrFromUserId.includes('_')) {
-          const parts = requestIdOrFromUserId.split('_');
-          fromUserId = parts[0] === myUid ? parts[1] : parts[0];
+          const parts = requestIdOrFromUserId.replace('rel_', '').split('__');
+          if (parts.length === 2) {
+            targetUserId = parts[0] === user.id ? parts[1] : parts[0];
+          } else {
+            const oldParts = requestIdOrFromUserId.split('_');
+            targetUserId = oldParts[0] === user.id ? oldParts[1] : oldParts[0];
+          }
         } else {
-          fromUserId = requestIdOrFromUserId;
+          targetUserId = requestIdOrFromUserId;
         }
       }
 
-      // Find the request document from local state if available
-      const foundReq = buddyRequests.find(
-        (r) =>
-          r.id === requestIdOrFromUserId ||
-          (r.fromUserId === fromUserId && r.toUserId === myUid) ||
-          (r.fromUserId === myUid && r.toUserId === fromUserId)
-      );
-
-      const targetDocId = foundReq?.id || (requestIdOrFromUserId.includes('_') ? requestIdOrFromUserId : `${fromUserId}_${myUid}`);
-      const altDocId = `${myUid}_${fromUserId}`;
-
-      // Optimistically update local state immediately
-      setBuddyRequests((prev) =>
-        prev.map((r) =>
-          r.id === targetDocId || r.id === altDocId || (r.fromUserId === fromUserId && r.toUserId === myUid) || (r.fromUserId === myUid && r.toUserId === fromUserId)
-            ? { ...r, status: 'accepted' }
-            : r
-        )
-      );
-      setCurrentUser((prev) =>
-        prev ? { ...prev, buddyIds: Array.from(new Set([...(prev.buddyIds || []), fromUserId])) } : null
-      );
-      setActiveUsers((prev) =>
-        prev.map((u) =>
-          u.id === fromUserId
-            ? { ...u, buddyIds: Array.from(new Set([...(u.buddyIds || []), myUid])) }
-            : u
-        )
-      );
-
-      // Perform Firestore writes with isolated try-catches so failure of one does not abort the others
-      // 1. Mark the buddy request as accepted in Firestore
-      try {
-        const reqRef = doc(db, 'buddyRequests', targetDocId);
-        await updateDoc(reqRef, {
-          status: 'accepted',
-          updatedAt: Date.now(),
+      const res = await acceptCanonicalFriendRequest(user.id, targetUserId);
+      if (res.success) {
+        sounds.playReceive();
+        confetti({
+          particleCount: 45,
+          spread: 55,
+          origin: { y: 0.7 },
         });
-      } catch {
-        try {
-          const reqRef = doc(db, 'buddyRequests', targetDocId);
-          await setDoc(reqRef, { status: 'accepted', updatedAt: Date.now() }, { merge: true });
-        } catch (err) {
-          console.warn('Accept buddy request write note:', err);
-        }
+        showToast('Friend request accepted! 🎉', 'success');
       }
-
-      if (targetDocId !== altDocId) {
-        try {
-          const altRef = doc(db, 'buddyRequests', altDocId);
-          updateDoc(altRef, { status: 'accepted', updatedAt: Date.now() }).catch(() => {});
-        } catch {
-          // ignore
-        }
-      }
-
-      // 2. Update own user document in Firestore
-      try {
-        await updateDoc(doc(db, 'users', myUid), {
-          buddyIds: arrayUnion(fromUserId),
-        });
-      } catch (err) {
-        console.warn('Update own buddyIds note:', err);
-      }
-
-      // 3. Update other user document in Firestore
-      try {
-        await updateDoc(doc(db, 'users', fromUserId), {
-          buddyIds: arrayUnion(myUid),
-        });
-      } catch {
-        // Ignored if security rules restrict writing to other user documents
-      }
-
-      confetti({
-        particleCount: 40,
-        spread: 50,
-        origin: { y: 0.7 },
-      });
     },
-    [buddyRequests]
+    [showToast]
   );
 
   const declineBuddyRequest = useCallback(
@@ -1947,117 +1728,23 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sounds.playClick();
       if (!user) return;
 
-      const fromUserId = requestIdOrFromUserId.includes('_')
-        ? requestIdOrFromUserId.split('_')[0]
-        : requestIdOrFromUserId;
-      const docId = `${fromUserId}_${user.id}`;
-      const altDocId = `${user.id}_${fromUserId}`;
-
-      // Optimistically remove request from local state
-      setBuddyRequests((prev) =>
-        prev.filter((r) => r.id !== docId && r.id !== altDocId && r.id !== requestIdOrFromUserId)
-      );
-
-      try {
-        const batch = writeBatch(db);
-        batch.delete(doc(db, 'buddyRequests', docId));
-        batch.delete(doc(db, 'buddyRequests', altDocId));
-        batch.delete(doc(db, 'buddyRequests', requestIdOrFromUserId));
-        await batch.commit();
-      } catch (e) {
-        console.error('Failed to decline buddy request:', e);
+      let targetUserId = requestIdOrFromUserId;
+      if (requestIdOrFromUserId.includes('_')) {
+        const parts = requestIdOrFromUserId.replace('rel_', '').split('__');
+        if (parts.length === 2) {
+          targetUserId = parts[0] === user.id ? parts[1] : parts[0];
+        } else {
+          targetUserId = requestIdOrFromUserId.split('_')[0];
+        }
       }
+
+      await declineOrCancelCanonicalRequest(user.id, targetUserId);
+      showToast('Request declined', 'info');
     },
-    []
+    [showToast]
   );
 
-  const cancelBuddyRequest = useCallback(
-    async (requestIdOrTargetId: string) => {
-      const user = currentUserRef.current;
-      sounds.playClick();
-      if (!user) return;
-
-      const targetId = requestIdOrTargetId.includes('_')
-        ? requestIdOrTargetId.split('_')[1]
-        : requestIdOrTargetId;
-      const docId = `${user.id}_${targetId}`;
-      const altDocId = `${targetId}_${user.id}`;
-
-      // Optimistically remove request from local state
-      setBuddyRequests((prev) =>
-        prev.filter((r) => r.id !== docId && r.id !== altDocId && r.id !== requestIdOrTargetId)
-      );
-
-      try {
-        const batch = writeBatch(db);
-        batch.delete(doc(db, 'buddyRequests', docId));
-        batch.delete(doc(db, 'buddyRequests', altDocId));
-        batch.delete(doc(db, 'buddyRequests', requestIdOrTargetId));
-        await batch.commit();
-      } catch (e) {
-        console.error('Failed to cancel buddy request:', e);
-      }
-    },
-    []
-  );
-
-  const sendBuddyRequest = useCallback(
-    async (targetUser: UserProfile) => {
-      const user = currentUserRef.current;
-      if (!user || user.id === targetUser.id) return;
-
-      if ((user.blockedUserIds || []).includes(targetUser.id)) {
-        showToast('You have blocked this user.', 'warning');
-        return;
-      }
-      if ((targetUser.blockedUserIds || []).includes(user.id)) {
-        showToast('This user is not available.', 'warning');
-        return;
-      }
-      if (getRelationship(targetUser.id) === 'FRIENDS') {
-        return; // Already buddies
-      }
-
-      // If target user already sent a pending request to us, auto-accept it immediately
-      const existingIncoming = buddyRequests.find(
-        (r) => r.fromUserId === targetUser.id && r.toUserId === user.id && r.status === 'pending'
-      );
-      if (existingIncoming) {
-        await acceptBuddyRequest(existingIncoming.id, targetUser.id);
-        return;
-      }
-
-      if (isProcessingRequestRef.current.has(targetUser.id)) return;
-      isProcessingRequestRef.current.add(targetUser.id);
-      sounds.playClick();
-
-      const requestId = `${user.id}_${targetUser.id}`;
-      const reqDoc: BuddyRequest = {
-        id: requestId,
-        fromUserId: user.id,
-        fromUserName: user.name,
-        fromUserAvatar: user.avatarId,
-        toUserId: targetUser.id,
-        toUserName: targetUser.name,
-        toUserAvatar: targetUser.avatarId,
-        status: 'pending',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      };
-
-      // Optimistic update
-      setBuddyRequests((prev) => [...prev.filter((r) => r.id !== requestId), reqDoc]);
-
-      try {
-        await setDoc(doc(db, 'buddyRequests', requestId), cleanForFirestore(reqDoc), { merge: true });
-      } catch (e) {
-        console.error('Failed to send buddy request:', e);
-      } finally {
-        isProcessingRequestRef.current.delete(targetUser.id);
-      }
-    },
-    [getRelationship, buddyRequests, acceptBuddyRequest]
-  );
+  const cancelBuddyRequest = declineBuddyRequest;
 
   // Block / Unblock User
   const isBlocked = useCallback(
@@ -2067,6 +1754,13 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return (user.blockedUserIds || []).includes(targetUserId);
     },
     []
+  );
+
+  const isBlockedBy = useCallback(
+    (targetUserId: string): boolean => {
+      return getRelationship(targetUserId) === 'BLOCKED_BY_OTHER';
+    },
+    [getRelationship]
   );
 
   const toggleBlockUser = useCallback(
@@ -2079,48 +1773,26 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const isCurrentlyBlocked = currentBlocked.includes(targetUserId);
 
       if (isCurrentlyBlocked) {
-        // Unblock
+        await unblockCanonicalUser(user.id, targetUserId);
         const updatedBlocked = currentBlocked.filter((id) => id !== targetUserId);
+        setCurrentUser((prev) => (prev ? { ...prev, blockedUserIds: updatedBlocked } : null));
         await updateProfile({ blockedUserIds: updatedBlocked });
+        showToast('User unblocked', 'info');
       } else {
-        // Block
+        await blockCanonicalUser(user.id, targetUserId);
         const updatedBlocked = [...currentBlocked, targetUserId];
-        try {
-          const batch = writeBatch(db);
-          batch.update(doc(db, 'users', user.id), {
-            blockedUserIds: updatedBlocked,
-            buddyIds: arrayRemove(targetUserId),
-          });
-          batch.update(doc(db, 'users', targetUserId), {
-            buddyIds: arrayRemove(user.id),
-          });
-          batch.delete(doc(db, 'buddyRequests', `${user.id}_${targetUserId}`));
-          batch.delete(doc(db, 'buddyRequests', `${targetUserId}_${user.id}`));
-          await batch.commit();
-
-          // End active call if with this user
-          if (
-            activeCall &&
-            (activeCall.callerId === targetUserId || activeCall.receiverId === targetUserId)
-          ) {
-            endCall();
-          }
-
-          setCurrentUser((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  blockedUserIds: updatedBlocked,
-                  buddyIds: (prev.buddyIds || []).filter((id) => id !== targetUserId),
-                }
-              : null
-          );
-        } catch (e) {
-          console.error('Failed to block user:', e);
+        if (
+          activeCall &&
+          (activeCall.callerId === targetUserId || activeCall.receiverId === targetUserId)
+        ) {
+          endCall();
         }
+        setCurrentUser((prev) => (prev ? { ...prev, blockedUserIds: updatedBlocked } : null));
+        await updateProfile({ blockedUserIds: updatedBlocked });
+        showToast('User blocked', 'info');
       }
     },
-    [updateProfile, activeCall, endCall]
+    [updateProfile, activeCall, endCall, showToast]
   );
 
   // Pin & Favorite Chat Room
@@ -2227,51 +1899,23 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     []
   );
 
-  // Remove Buddy
+  // Remove Buddy using canonical relationship
   const removeBuddy = useCallback(
     async (targetUserId: string) => {
       const user = currentUserRef.current;
-      if (!user) return;
+      if (!user || !targetUserId) return;
       sounds.playClick();
 
-      // Optimistic local state update
-      const updatedBuddies = (user.buddyIds || []).filter((id) => id !== targetUserId);
-      setCurrentUser((prev) => (prev ? { ...prev, buddyIds: updatedBuddies } : null));
-      setActiveUsers((prev) =>
-        prev.map((u) =>
-          u.id === targetUserId
-            ? { ...u, buddyIds: (u.buddyIds || []).filter((id) => id !== user.id) }
-            : u
-        )
-      );
-      setBuddyRequests((prev) =>
-        prev.filter(
-          (r) =>
-            !(
-              (r.fromUserId === user.id && r.toUserId === targetUserId) ||
-              (r.fromUserId === targetUserId && r.toUserId === user.id)
-            )
-        )
-      );
-
       try {
-        await updateDoc(doc(db, 'users', user.id), {
-          buddyIds: arrayRemove(targetUserId),
-        });
-        try {
-          await updateDoc(doc(db, 'users', targetUserId), {
-            buddyIds: arrayRemove(user.id),
-          });
-        } catch {
-          // Ignored if target user doc is owner-restricted
-        }
-        deleteDoc(doc(db, 'buddyRequests', `${user.id}_${targetUserId}`)).catch(() => {});
-        deleteDoc(doc(db, 'buddyRequests', `${targetUserId}_${user.id}`)).catch(() => {});
+        await removeCanonicalFriend(user.id, targetUserId);
+        const updatedBuddies = (user.buddyIds || []).filter((id) => id !== targetUserId);
+        setCurrentUser((prev) => (prev ? { ...prev, buddyIds: updatedBuddies } : null));
+        showToast('Removed from buddies', 'info');
       } catch (e) {
         console.error('Failed to remove buddy:', e);
       }
     },
-    []
+    [showToast]
   );
 
   const isBuddy = useCallback(
@@ -2444,7 +2088,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [currentRoomId]
   );
 
-  // Send Message
+  // Send Message with atomic batch persistence
   const sendMessage = useCallback(
     async (
       content: string,
@@ -2475,37 +2119,19 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       sendTyping(false);
 
-      const authUid = auth.currentUser?.uid || user.id;
-      const newMsgId = 'msg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
-      const rawMsg: ChatMessage = {
-        id: newMsgId,
-        roomId: currentRoomId,
-        senderId: authUid,
-        senderName: user.name,
-        senderAvatar: user.avatarId,
-        senderCustomAvatar: user.customAvatarUrl,
-        senderBadge: user.badge,
-        senderTheme: user.theme,
-        type,
-        content: content.trim(),
-        attachmentUrl,
-        audioDuration,
-        reactions: {},
-        replyTo: replyingTo || undefined,
-        timestamp: Date.now(),
-        readBy: [authUid],
-      };
-
-      const firestoreMsg = cleanForFirestore(rawMsg);
+      const isDm = currentRoomId.startsWith('dm_');
+      const dmParticipants = isDm
+        ? currentRoomId.replace('dm_', '').split('_')
+        : (currentRoom?.participantIds || [user.id]);
 
       sounds.playSend();
       setReplyingTo(null);
-
       markRoomAsRead(currentRoomId);
-      setMessages((prev) => (prev.some((m) => m.id === newMsgId) ? prev : [...prev, rawMsg]));
 
-      // If chatting with dummy accounts, simulate an interactive realistic response
-      if (currentRoomId.includes('user_mira_vibe')) {
+      const isDemoMode = import.meta.env.VITE_DEMO_MODE === 'true';
+
+      // If demo mode is active and chatting with demo accounts, simulate responses
+      if (isDemoMode && currentRoomId.includes('user_mira_vibe')) {
         setTimeout(() => {
           setTypingUsers([{
             userId: 'user_mira_vibe',
@@ -2532,7 +2158,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             sounds.playReceive();
           }, 1800);
         }, 900);
-      } else if (currentRoomId.includes('user_arif_hasan')) {
+      } else if (isDemoMode && currentRoomId.includes('user_arif_hasan')) {
         setTimeout(() => {
           setTypingUsers([{
             userId: 'user_arif_hasan',
@@ -2562,33 +2188,24 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       try {
-        const msgDocRef = doc(db, 'rooms', currentRoomId, 'messages', newMsgId);
-        await setDoc(msgDocRef, firestoreMsg);
+        const rawMsg = await sendCanonicalMessage({
+          roomId: currentRoomId,
+          sender: user,
+          content,
+          type,
+          attachmentUrl,
+          audioDuration,
+          replyTo: replyingTo || undefined,
+          isDm,
+          dmParticipants,
+        });
 
-        const roomDocRef = doc(db, 'rooms', currentRoomId);
-        const isDm = currentRoomId.startsWith('dm_');
-        const dmParticipants = isDm
-          ? currentRoomId.replace('dm_', '').split('_')
-          : (currentRoom?.participantIds || [user.id]);
-
-        await setDoc(
-          roomDocRef,
-          {
-            lastMessage: type === 'sticker' ? 'Sticker' : type === 'voice' ? 'Voice note' : content.slice(0, 35),
-            lastMessageTime: Date.now(),
-            ...(isDm
-              ? { type: 'direct', isDirect: true, participantIds: dmParticipants }
-              : currentRoom
-              ? {}
-              : { type: 'group', participantIds: [user.id] }),
-          },
-          { merge: true }
-        );
+        setMessages((prev) => (prev.some((m) => m.id === rawMsg.id) ? prev : [...prev, rawMsg]));
       } catch (err) {
         console.error('Failed to post message to Firestore:', err);
       }
     },
-    [currentRoomId, replyingTo, sendTyping, markRoomAsRead]
+    [currentRoomId, replyingTo, sendTyping, markRoomAsRead, rawRooms, activeUsers, showToast]
   );
 
   // Toggle Reaction in Firestore

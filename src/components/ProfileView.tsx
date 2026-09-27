@@ -22,6 +22,7 @@ import {
   Users,
 } from 'lucide-react';
 import { sounds } from '../utils/sound';
+import { uploadImageToCloudinary } from '../utils/cloudinary';
 
 export const ProfileView: React.FC = () => {
   const {
@@ -104,21 +105,28 @@ export const ProfileView: React.FC = () => {
     showToast('Profile link copied to clipboard!', 'success');
   };
 
-  const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
+
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        showToast('Please choose an image under 5MB.', 'warning');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const url = reader.result as string;
-        updateProfile({ coverUrl: url });
-        sounds.playClick();
-        showToast('Cover photo updated!', 'success');
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    if (file.size > 8 * 1024 * 1024) {
+      showToast('Please choose an image under 8MB.', 'warning');
+      return;
+    }
+    setIsUploadingCover(true);
+    showToast('Uploading cover photo...', 'info');
+    try {
+      const url = await uploadImageToCloudinary(file, 'mochichat_test/covers');
+      await updateProfile({ coverUrl: url });
+      sounds.playClick();
+      showToast('Cover photo updated!', 'success');
+    } catch (err) {
+      console.error('Failed to upload cover photo:', err);
+      showToast('Failed to upload cover photo. Please try again.', 'error');
+    } finally {
+      setIsUploadingCover(false);
+      if (e.target) e.target.value = '';
     }
   };
 

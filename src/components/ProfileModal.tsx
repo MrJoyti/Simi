@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { sounds } from '../utils/sound';
 import { canViewProfile } from '../utils/privacy';
+import { uploadImageToCloudinary } from '../utils/cloudinary';
 
 const BADGE_OPTIONS = [
   'Verified Member',
@@ -348,35 +349,52 @@ export const ProfileModal: React.FC = () => {
     }, 600);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        showToast('Please choose an image under 2MB.', 'error');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setCustomAvatarUrl(reader.result as string);
-        sounds.playClick();
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    if (file.size > 8 * 1024 * 1024) {
+      showToast('Please choose an image under 8MB.', 'error');
+      return;
+    }
+    setIsUploadingAvatar(true);
+    showToast('Uploading custom photo...', 'info');
+    try {
+      const url = await uploadImageToCloudinary(file, 'mochichat_test/avatars');
+      setCustomAvatarUrl(url);
+      sounds.playClick();
+      showToast('Photo uploaded!', 'success');
+    } catch (err) {
+      console.error('Failed to upload custom photo:', err);
+      showToast('Failed to upload photo. Please try again.', 'error');
+    } finally {
+      setIsUploadingAvatar(false);
+      if (e.target) e.target.value = '';
     }
   };
 
-  const handleCoverFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCoverFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        showToast('Please choose an image under 5MB.', 'error');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setCoverUrl(reader.result as string);
-        sounds.playClick();
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    if (file.size > 8 * 1024 * 1024) {
+      showToast('Please choose an image under 8MB.', 'error');
+      return;
+    }
+    setIsUploadingCover(true);
+    showToast('Uploading cover photo...', 'info');
+    try {
+      const url = await uploadImageToCloudinary(file, 'mochichat_test/covers');
+      setCoverUrl(url);
+      sounds.playClick();
+      showToast('Cover photo uploaded!', 'success');
+    } catch (err) {
+      console.error('Failed to upload cover photo:', err);
+      showToast('Failed to upload cover photo. Please try again.', 'error');
+    } finally {
+      setIsUploadingCover(false);
+      if (e.target) e.target.value = '';
     }
   };
 

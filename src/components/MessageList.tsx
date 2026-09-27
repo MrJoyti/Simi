@@ -209,21 +209,16 @@ export const MessageList: React.FC = () => {
                   isUser ? 'items-end' : 'items-start'
                 }`}
               >
-                {/* Header (Author, Badge & Timestamp) */}
+                {/* Header (Author for Group chats & Timestamp) */}
                 {isFirstFromAuthor && (
                   <div
                     className={`flex items-center gap-1.5 mb-1 px-1 text-[11px] ${
                       isUser ? 'flex-row-reverse' : 'flex-row'
                     }`}
                   >
-                    <span className={`font-bold truncate max-w-[120px] ${isMidnight ? 'text-slate-300' : 'text-slate-800'}`}>
-                      {msg.senderName}
-                    </span>
-                    {msg.senderBadge && (
-                      <span className={`text-[10px] px-1.5 py-0.2 rounded-md font-medium ${
-                        isMidnight ? 'bg-slate-800 text-blue-400' : 'bg-pink-100/80 text-pink-700'
-                      }`}>
-                        {msg.senderBadge}
+                    {!isDirectChat && !isUser && (
+                      <span className={`font-semibold truncate max-w-[140px] ${isMidnight ? 'text-slate-300' : 'text-slate-800'}`}>
+                        {msg.senderName}
                       </span>
                     )}
                     <span className="text-[10px] text-slate-400">

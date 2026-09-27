@@ -4,7 +4,7 @@ import { StickerPicker } from './StickerPicker';
 import { ImagePreviewModal } from './ImagePreviewModal';
 import { THEMES, resolveSimiTheme } from '../utils/theme';
 import { StickerItem } from '../types/chat';
-import { uploadImageToCloudinary } from '../utils/cloudinary';
+import { uploadImageToCloudinary, uploadMediaToCloudinary } from '../utils/cloudinary';
 import {
   Send,
   Sparkles,
@@ -75,6 +75,8 @@ export const ChatInput: React.FC = () => {
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [recordDuration, setRecordDuration] = useState<number>(0);
   const [recordedAudioUrl, setRecordedAudioUrl] = useState<string | null>(null);
+  const [recordedAudioBlob, setRecordedAudioBlob] = useState<Blob | null>(null);
+  const [isUploadingVoice, setIsUploadingVoice] = useState<boolean>(false);
   const [recordedDurationFinal, setRecordedDurationFinal] = useState<number>(0);
   const [micError, setMicError] = useState<string | null>(null);
   const [previewPlaying, setPreviewPlaying] = useState<boolean>(false);
@@ -175,12 +177,9 @@ export const ChatInput: React.FC = () => {
       mediaRecorder.onstop = () => {
         const mime = selectedMimeType || 'audio/webm';
         const audioBlob = new Blob(audioChunksRef.current, { type: mime });
-
-        const reader = new FileReader();
-        reader.readAsDataURL(audioBlob);
-        reader.onloadend = () => {
-          setRecordedAudioUrl(reader.result as string);
-        };
+        setRecordedAudioBlob(audioBlob);
+        const localUrl = URL.createObjectURL(audioBlob);
+        setRecordedAudioUrl(localUrl);
 
         if (mediaStreamRef.current) {
           mediaStreamRef.current.getTracks().forEach((track) => track.stop());
@@ -237,21 +236,39 @@ export const ChatInput: React.FC = () => {
     sounds.playClick();
     cleanupRecording();
     setIsRecording(false);
+    if (recordedAudioUrl && recordedAudioUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(recordedAudioUrl);
+    }
+    setRecordedAudioBlob(null);
     setRecordedAudioUrl(null);
     setRecordDuration(0);
     setMicError(null);
+    setIsUploadingVoice(false);
     if (previewAudioRef.current) {
       previewAudioRef.current.pause();
     }
     setPreviewPlaying(false);
   };
 
-  // Send Recorded Voice Note
-  const sendVoiceNote = () => {
-    if (!recordedAudioUrl) return;
+  // Send Recorded Voice Note (Upload to Cloudinary, never store base64 in Firestore)
+  const sendVoiceNote = async () => {
+    if (!recordedAudioBlob) return;
     const finalDuration = Math.max(1, recordedDurationFinal || recordDuration || 1);
-    sendMessage('Voice Note', 'voice', recordedAudioUrl, finalDuration);
-    cancelRecording();
+    setIsUploadingVoice(true);
+    sounds.playClick();
+    try {
+      const secureUrl = await uploadMediaToCloudinary(recordedAudioBlob, {
+        folder: 'mochichat_test/voice',
+        resourceType: 'auto',
+      });
+      await sendMessage('Voice Note', 'voice', secureUrl, finalDuration);
+      cancelRecording();
+    } catch (err) {
+      console.error('Failed to upload voice note:', err);
+      setMicError('Failed to send voice note. Please retry.');
+    } finally {
+      setIsUploadingVoice(false);
+    }
   };
 
   // Toggle preview playback of recorded voice note
@@ -285,17 +302,23 @@ export const ChatInput: React.FC = () => {
     sendTyping(Boolean(val.trim()));
   };
 
-  const handleSend = (e?: React.FormEvent) => {
+  const handleSend = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!text.trim()) return;
+    const content = text.trim();
+    if (!content) return;
 
-    sendMessage(text.trim(), 'text');
-    if (currentRoomId) {
-      clearRoomDraft(currentRoomId);
+    try {
+      await sendMessage(content, 'text');
+      if (currentRoomId) {
+        clearRoomDraft(currentRoomId);
+      }
+      setText('');
+      setHasDraft(false);
+      sendTyping(false);
+    } catch (err) {
+      console.error('Failed to send message:', err);
+      showToast('Failed to send message. Please retry.', 'error');
     }
-    setText('');
-    setHasDraft(false);
-    sendTyping(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
