@@ -228,6 +228,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         msg = 'Google Sign-In is not enabled in your Firebase Console project.';
       } else if (fbErr.code === 'auth/unauthorized-domain') {
         msg = 'This domain is not authorized for Google Sign-In in your Firebase Console.';
+      } else if (
+        fbErr.message?.includes('missing initial state') ||
+        fbErr.message?.includes('sessionStorage') ||
+        fbErr.code === 'auth/missing-initial-state'
+      ) {
+        msg = 'Google Sign-In is restricted on this browser/app by storage partitioning. Please sign in or register with Email & Password below!';
       }
 
       setError(msg);

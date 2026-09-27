@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/__/auth/:path*",
+      "destination": "https://simi-9aa3b.firebaseapp.com/__/auth/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
