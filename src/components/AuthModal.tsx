@@ -469,31 +469,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         if (!username.trim()) throw new Error('Please enter a username.');
         if (password.length < 6) throw new Error('Password must be at least 6 characters.');
 
-        // 1. Try Firebase Auth create user
-        let userUid: string | null = null;
-        let isVerified = false;
-
+        // 1. Firebase Auth create user
+        const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
+        const userUid = cred.user.uid;
+        const isVerified = cred.user.emailVerified;
         try {
-          const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
-          userUid = cred.user.uid;
-          isVerified = cred.user.emailVerified;
-          try {
-            await sendEmailVerification(cred.user);
-          } catch {
-            // ignore
-          }
-        } catch (authErr: unknown) {
-          const fbErr = authErr as { code?: string; message?: string };
-          if (
-            fbErr.code === 'auth/operation-not-allowed' ||
-            fbErr.code === 'auth/admin-restricted-operation' ||
-            fbErr.code === 'auth/unauthorized-domain'
-          ) {
-            userUid = 'usr_' + btoa(email.trim().toLowerCase()).replace(/[^a-zA-Z0-9]/g, '').slice(0, 24);
-            isVerified = true;
-          } else {
-            throw authErr;
-          }
+          await sendEmailVerification(cred.user);
+        } catch {
+          // ignore
         }
 
         if (userUid && selectedGender) {
@@ -501,22 +484,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         }
       } else {
         // Mode: Login
-        let userUid: string | null = null;
-        try {
-          const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
-          userUid = cred.user.uid;
-        } catch (authErr: unknown) {
-          const fbErr = authErr as { code?: string; message?: string };
-          if (
-            fbErr.code === 'auth/operation-not-allowed' ||
-            fbErr.code === 'auth/admin-restricted-operation' ||
-            fbErr.code === 'auth/unauthorized-domain'
-          ) {
-            userUid = 'usr_' + btoa(email.trim().toLowerCase()).replace(/[^a-zA-Z0-9]/g, '').slice(0, 24);
-          } else {
-            throw authErr;
-          }
-        }
+        const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
+        const userUid = cred.user.uid;
 
         if (userUid) {
           sounds.playSend();

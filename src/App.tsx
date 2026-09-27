@@ -65,7 +65,7 @@ const ChatInterface: React.FC = () => {
   }
 
   // Show AuthModal if user hasn't registered, logged in, or is missing gender
-  if (!currentUser || !currentUser.gender) {
+  if (!authUser || !currentUser || !currentUser.gender) {
     return (
       <AuthModal
         onSuccess={(profile) => setUserProfileDirectly(profile)}

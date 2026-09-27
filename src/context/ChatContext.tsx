@@ -203,15 +203,7 @@ function cleanForFirestore<T extends Record<string, any>>(obj: T): Partial<T> {
 
 export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [authUser, setAuthUser] = useState<User | null>(null);
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
-    try {
-      const cached = localStorage.getItem('mochichat_profile_cache');
-      if (cached) return JSON.parse(cached);
-    } catch {
-      // ignore
-    }
-    return null;
-  });
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
 
   const [rawRooms, setRawRooms] = useState<ChatRoom[]>([]);
@@ -313,18 +305,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.error('Error fetching user profile:', err);
         }
       } else {
+        setCurrentUser(null);
         try {
-          const storedUid = localStorage.getItem('mochichat_active_user_uid');
-          if (storedUid) {
-            const userDocRef = doc(db, 'users', storedUid);
-            const snap = await getDoc(userDocRef);
-            if (snap.exists()) {
-              const data = snap.data() as UserProfile;
-              if (!data.buddyIds) data.buddyIds = [];
-              if (!data.lastReadTimestamps) data.lastReadTimestamps = {};
-              setCurrentUser(data);
-            }
-          }
+          localStorage.removeItem('mochichat_active_user_uid');
+          localStorage.removeItem('mochichat_profile_cache');
         } catch {
           // ignore
         }
@@ -344,7 +328,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Heartbeat & Online Presence Tracking in Firestore & RTDB with Activity Tracking
   useEffect(() => {
     if (!currentUser?.id) return;
-    const userId = currentUser.id;
+    const userId = auth.currentUser?.uid || currentUser.id;
 
     const sendPresenceUpdate = async (status: 'online' | 'idle' | 'offline') => {
       const targetStatus = currentUser.showActiveStatus === false ? 'offline' : status;
@@ -2222,11 +2206,12 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       sendTyping(false);
 
+      const authUid = auth.currentUser?.uid || user.id;
       const newMsgId = 'msg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
       const rawMsg: ChatMessage = {
         id: newMsgId,
         roomId: currentRoomId,
-        senderId: user.id,
+        senderId: authUid,
         senderName: user.name,
         senderAvatar: user.avatarId,
         senderCustomAvatar: user.customAvatarUrl,
@@ -2239,7 +2224,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         reactions: {},
         replyTo: replyingTo || undefined,
         timestamp: Date.now(),
-        readBy: [user.id],
+        readBy: [authUid],
       };
 
       const firestoreMsg = cleanForFirestore(rawMsg);
