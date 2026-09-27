@@ -111,35 +111,23 @@ const ChatInterface: React.FC = () => {
       {/* Main Content Area */}
       <div className={`flex-1 flex flex-col h-full min-h-0 min-w-0 backdrop-blur-xs relative overflow-hidden transition-colors duration-300 ${isMaleTheme ? 'bg-[#0B0F14]/90' : 'bg-white/70'}`}>
         {/* On Mobile: Render Active Tab View */}
-        <div className="md:hidden flex-1 flex flex-col h-full min-h-0 min-w-0 overflow-hidden relative">
+        <div className="md:hidden flex-1 flex flex-col min-h-0 min-w-0 w-full overflow-hidden relative">
           {activeMobileTab === 'chats' && (
             currentRoomId ? (
-              <div className="flex-1 flex flex-col h-full min-h-0 min-w-0 overflow-hidden">
+              <div className="flex-1 flex flex-col min-h-0 min-w-0 w-full overflow-hidden">
                 <ChatHeader onToggleSidebarMobile={() => setMobileSidebarOpen(true)} />
                 <MessageList />
                 <ChatInput />
               </div>
             ) : (
-              <div className="flex-1 flex flex-col h-full min-h-0 min-w-0 overflow-hidden">
+              <div className="flex-1 flex flex-col min-h-0 min-w-0 w-full overflow-hidden">
                 <MobileChannelsList />
               </div>
             )
           )}
-          {activeMobileTab === 'spaces' && (
-            <div className="flex-1 flex flex-col h-full min-h-0 min-w-0 overflow-hidden">
-              <VerseView />
-            </div>
-          )}
-          {activeMobileTab === 'friends' && (
-            <div className="flex-1 flex flex-col h-full min-h-0 min-w-0 overflow-hidden">
-              <FriendsView />
-            </div>
-          )}
-          {activeMobileTab === 'profile' && (
-            <div className="flex-1 flex flex-col h-full min-h-0 min-w-0 overflow-hidden">
-              <ProfileView />
-            </div>
-          )}
+          {activeMobileTab === 'spaces' && <VerseView />}
+          {activeMobileTab === 'friends' && <FriendsView />}
+          {activeMobileTab === 'profile' && <ProfileView />}
         </div>
 
         {/* On Desktop: Standard full chat flow */}

@@ -25,6 +25,7 @@ interface AvatarProps {
   id?: string;
   customUrl?: string;
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+  shape?: 'rounded' | 'circle';
   className?: string;
 }
 
@@ -40,14 +41,16 @@ export const CuteAvatar: React.FC<AvatarProps> = ({
   id = 'bunny',
   customUrl,
   size = 'md',
+  shape = 'rounded',
   className = '',
 }) => {
   const dimensionClass = sizeClasses[size];
+  const roundedClass = shape === 'circle' || className.includes('rounded-full') ? 'rounded-full' : 'rounded-2xl';
 
   if (customUrl) {
     return (
       <div
-        className={`relative rounded-2xl overflow-hidden shrink-0 shadow-sm border border-black/5 ${dimensionClass} ${className}`}
+        className={`relative ${roundedClass} overflow-hidden shrink-0 shadow-sm border border-black/5 ${dimensionClass} ${className}`}
       >
         <img
           src={customUrl}
@@ -62,7 +65,7 @@ export const CuteAvatar: React.FC<AvatarProps> = ({
   // Render SVG based on id
   return (
     <div
-      className={`relative rounded-2xl overflow-hidden shrink-0 flex items-center justify-center select-none shadow-xs border border-white/60 ${dimensionClass} ${className}`}
+      className={`relative ${roundedClass} overflow-hidden shrink-0 flex items-center justify-center select-none shadow-xs border border-white/60 ${dimensionClass} ${className}`}
     >
       {renderAvatarSvg(id)}
     </div>
