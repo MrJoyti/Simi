@@ -543,9 +543,13 @@ export const ProfileView: React.FC = () => {
               sounds.playClick();
               handleSignOut();
             }}
-            className="w-full flex items-center justify-center gap-2 p-2.5 rounded-2xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 font-bold text-xs transition-colors"
+            className={`w-full flex items-center justify-center gap-2 p-2.5 rounded-2xl font-bold text-xs transition-all active:scale-98 border ${
+              isMidnight
+                ? 'bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border-rose-900/40'
+                : 'bg-rose-50 hover:bg-rose-100/80 text-rose-700 border-rose-200/60'
+            }`}
           >
-            <LogOut className="w-4 h-4" />
+            <LogOut className="w-4 h-4 text-rose-400" />
             <span>Sign Out</span>
           </button>
         </div>

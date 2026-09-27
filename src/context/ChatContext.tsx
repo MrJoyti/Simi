@@ -15,6 +15,8 @@ import {
   BuddyRequestState,
   RelationshipState,
 } from '../types/chat';
+import { Capacitor } from '@capacitor/core';
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { sounds } from '../utils/sound';
 import { THEMES } from '../utils/theme';
 import confetti from 'canvas-confetti';
@@ -2341,31 +2343,57 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const handleSignOut = async () => {
     const user = currentUserRef.current;
+    const roomId = currentRoomId;
+
+    // 1. Immediately reset memory and auth states so the UI shifts to login in 0ms!
+    setCurrentUser(null);
+    setAuthUser(null);
+    setCurrentRoomIdState('');
+    setRawRooms([]);
+    setMessages([]);
+    setActiveUsers([]);
+    setTypingUsers([]);
+    setReplyingTo(null);
+    setShowProfileModal(false);
+    setShowCreateRoomModal(false);
+    setShowFindBuddyModal(false);
+    setShowMembersPanel(false);
+
+    // 2. Clear storage synchronously
+    try {
+      localStorage.removeItem('mochichat_active_user_uid');
+      localStorage.removeItem('mochichat_profile_cache');
+      sessionStorage.clear();
+    } catch {
+      // ignore
+    }
+
+    // 3. Mark offline in Firestore & cleanup typing in background (non-blocking)
     if (user?.id) {
+      if (roomId) {
+        deleteDoc(doc(db, 'rooms', roomId, 'typing', user.id)).catch(() => {});
+      }
+      updateDoc(doc(db, 'users', user.id), {
+        status: 'offline',
+        lastSeen: Date.now(),
+      }).catch(() => {});
+    }
+
+    // 4. Capacitor Native Google SignOut if on mobile app
+    if (Capacitor.isNativePlatform()) {
       try {
-        if (currentRoomId) {
-          deleteDoc(doc(db, 'rooms', currentRoomId, 'typing', user.id)).catch(() => {});
-        }
-        await updateDoc(doc(db, 'users', user.id), {
-          status: 'offline',
-          lastSeen: Date.now(),
-        });
+        GoogleAuth.signOut().catch(() => {});
       } catch {
-        // silent fail
+        // ignore
       }
     }
+
+    // 5. Firebase Auth signOut
     try {
       await signOut(auth);
     } catch {
       // ignore
     }
-    try {
-      localStorage.removeItem('mochichat_active_user_uid');
-      localStorage.removeItem('mochichat_profile_cache');
-    } catch {
-      // ignore
-    }
-    setCurrentUser(null);
   };
 
   const setUserProfileDirectly = (profile: UserProfile) => {

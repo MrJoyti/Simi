@@ -21,6 +21,7 @@ import {
   UserX,
   Ban,
   Lock,
+  LogOut,
 } from 'lucide-react';
 import { sounds } from '../utils/sound';
 import { canViewProfile } from '../utils/privacy';
@@ -60,6 +61,7 @@ export const ProfileModal: React.FC = () => {
     buddyRequests,
     isBlocked,
     toggleBlockUser,
+    handleSignOut,
   } = useChat();
 
   const handleClose = () => {
@@ -936,22 +938,38 @@ export const ProfileModal: React.FC = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+          <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-100">
             <button
               type="button"
-              onClick={() => setShowProfileModal(false)}
-              className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 rounded-2xl hover:bg-slate-100 transition-colors"
+              onClick={() => {
+                sounds.playClick();
+                setShowProfileModal(false);
+                handleSignOut();
+              }}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-rose-600 hover:text-rose-700 rounded-2xl bg-rose-50 hover:bg-rose-100/70 border border-rose-200/60 transition-colors"
+              title="Log Out of your account"
             >
-              Cancel
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Log Out</span>
             </button>
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="flex items-center gap-1.5 px-5 py-2 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white rounded-2xl text-xs font-bold shadow-md shadow-pink-200 transition-transform active:scale-95 disabled:opacity-50"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>{savedSuccess ? 'Saved! ✨' : isSaving ? 'Saving...' : 'Save Profile & Theme'}</span>
-            </button>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowProfileModal(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 rounded-2xl hover:bg-slate-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="flex items-center gap-1.5 px-5 py-2 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white rounded-2xl text-xs font-bold shadow-md shadow-pink-200 transition-transform active:scale-95 disabled:opacity-50"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>{savedSuccess ? 'Saved! ✨' : isSaving ? 'Saving...' : 'Save Profile & Theme'}</span>
+              </button>
+            </div>
           </div>
         </form>
       </div>
