@@ -6,8 +6,11 @@ import {
   sendPasswordResetEmail,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithCredential,
   User,
 } from 'firebase/auth';
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
+import { Capacitor } from '@capacitor/core';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { CuteAvatar, AVATAR_LIST } from '../utils/avatars';
@@ -155,9 +158,35 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setLoading(true);
 
     try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
+      let user: User;
+
+      if (Capacitor.isNativePlatform()) {
+        try {
+          GoogleAuth.initialize();
+          const googleUser = await GoogleAuth.signIn();
+          const credential = GoogleAuthProvider.credential(googleUser.authentication.idToken);
+          const result = await signInWithCredential(auth, credential);
+          user = result.user;
+        } catch (nativeErr: any) {
+          console.warn('Native Google Auth note:', nativeErr);
+          if (
+            nativeErr?.message?.includes('cancelled') ||
+            nativeErr?.message?.includes('canceled') ||
+            nativeErr?.code === '12501' ||
+            nativeErr?.code === 12501
+          ) {
+            setLoading(false);
+            return;
+          }
+          const provider = new GoogleAuthProvider();
+          const result = await signInWithPopup(auth, provider);
+          user = result.user;
+        }
+      } else {
+        const provider = new GoogleAuthProvider();
+        const result = await signInWithPopup(auth, provider);
+        user = result.user;
+      }
 
       // Check if user profile already exists in Firestore
       const userDocRef = doc(db, 'users', user.uid);
