@@ -7,54 +7,6 @@ import { sounds } from '../utils/sound';
 import { canViewerAccessUserContent } from '../utils/presence';
 import type { UserProfile, StoryItem } from '../types/chat';
 
-// Friendly starter buddies in case the app has no other registered users yet
-const STARTER_BUDDIES: UserProfile[] = [
-  {
-    id: 'starter_mochi_rabbit',
-    name: 'Mochi Rabbit',
-    username: 'mochirabbit',
-    email: 'mochirabbit@example.com',
-    avatarId: 'bunny',
-    bio: 'Loving pastel skies & warm mochi',
-    theme: 'strawberry',
-    soundEnabled: true,
-    status: 'online',
-    moodEmoji: '🌸',
-    moodText: 'Cozy vibes & sweet pastel stories!',
-    createdAt: Date.now() - 86400000 * 3,
-    lastSeen: Date.now() - 60000,
-  },
-  {
-    id: 'starter_sakura_cat',
-    name: 'Sakura Kitty',
-    username: 'sakuracat',
-    email: 'sakuracat@example.com',
-    avatarId: 'cat',
-    bio: 'Chasing blossoms in the spring breeze',
-    theme: 'lavender',
-    soundEnabled: true,
-    status: 'online',
-    moodEmoji: '✨',
-    moodText: 'Enjoying cherry blossoms in the breeze!',
-    createdAt: Date.now() - 86400000 * 2,
-    lastSeen: Date.now() - 120000,
-  },
-  {
-    id: 'starter_boba_bear',
-    name: 'Boba Bear',
-    username: 'bobabear',
-    email: 'bobabear@example.com',
-    avatarId: 'bear',
-    bio: 'Always down for brown sugar boba',
-    theme: 'vanilla',
-    soundEnabled: true,
-    status: 'idle',
-    moodEmoji: '🧋',
-    moodText: 'Brown sugar boba time with friends!',
-    createdAt: Date.now() - 86400000,
-    lastSeen: Date.now() - 300000,
-  },
-];
 
 export const StoriesBar: React.FC = () => {
   const {
@@ -124,11 +76,6 @@ export const StoriesBar: React.FC = () => {
         candidatesMap.set(u.id, u);
       }
     });
-
-    // Priority 3: Fallback starter buddies if user has no peers yet
-    if (candidatesMap.size === 0) {
-      STARTER_BUDDIES.forEach((b) => candidatesMap.set(b.id, b));
-    }
 
     const allCandidates = Array.from(candidatesMap.values()).filter((buddy) =>
       canViewerAccessUserContent(buddy, currentUser, activeUsers)

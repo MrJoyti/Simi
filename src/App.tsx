@@ -43,21 +43,17 @@ const ChatInterface: React.FC = () => {
 
   // Loading state
   if (isAuthLoading) {
-    const isMaleTheme = theme === 'midnight';
     return (
       <div
         className="flex h-[100dvh] w-full items-center justify-center transition-colors duration-300"
         style={{ backgroundColor: activeTheme.bodyBg }}
       >
-        <div className="flex flex-col items-center gap-3">
+        <div className="flex items-center justify-center">
           <img
             src="/simi-logo.png"
             alt="Simi Logo"
-            className="w-14 h-14 rounded-3xl object-cover shadow-lg animate-bounce ring-4 ring-purple-400/30"
+            className="w-16 h-16 rounded-3xl object-cover shadow-xl animate-bounce ring-4 ring-purple-400/30"
           />
-          <p className={`text-xs font-bold ${isMaleTheme ? 'text-blue-300' : 'text-slate-600'}`}>
-            Loading Simi {isMaleTheme ? 'Midnight' : 'Cozy'}...
-          </p>
         </div>
       </div>
     );

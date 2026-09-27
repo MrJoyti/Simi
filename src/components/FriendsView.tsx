@@ -507,7 +507,12 @@ export const FriendsView: React.FC = () => {
                   ) : getBuddyRequestState(user.id) === 'incomingRequest' ? (
                     <div className="flex items-center gap-1">
                       <button
-                        onClick={() => acceptBuddyRequest(user.id, user.id)}
+                        onClick={() => {
+                          const req = buddyRequests.find(
+                            (r) => r.fromUserId === user.id && r.toUserId === currentUser?.id && r.status === 'pending'
+                          );
+                          acceptBuddyRequest(req?.id || user.id, user.id);
+                        }}
                         className="px-3 py-1.5 rounded-2xl text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 transition-colors shadow-2xs"
                       >
                         Accept
