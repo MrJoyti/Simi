@@ -15,7 +15,6 @@ import { CreateRoomModal } from './components/CreateRoomModal';
 import { FindBuddyModal } from './components/FindBuddyModal';
 import { CreateStoryModal } from './components/CreateStoryModal';
 import { VideoCallModal } from './components/VideoCallModal';
-import { StoriesBar } from './components/StoriesBar';
 import { MobileNavigation } from './components/MobileNavigation';
 import { FriendsView } from './components/FriendsView';
 import { ProfileView } from './components/ProfileView';
@@ -135,10 +134,9 @@ const ChatInterface: React.FC = () => {
           )}
         </div>
 
-        {/* On Desktop: Standard full chat flow with StoriesBar header */}
+        {/* On Desktop: Standard full chat flow */}
         <div className="hidden md:flex flex-1 flex-col h-full min-h-0 min-w-0">
           <ChatHeader onToggleSidebarMobile={() => setMobileSidebarOpen(true)} />
-          <StoriesBar />
           <MessageList />
           <ChatInput />
         </div>
