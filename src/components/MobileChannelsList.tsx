@@ -41,7 +41,8 @@ export const MobileChannelsList: React.FC = () => {
 
   if (!currentUser) return null;
 
-  const isMidnight = theme === 'midnight' || currentUser?.gender === 'male';
+  const isMale = currentUser?.gender ? currentUser.gender === 'male' : theme === 'midnight';
+  const isMidnight = isMale;
 
   const totalUnreadCount = rooms.reduce((acc, r) => acc + (r.unreadCount || 0), 0);
 
@@ -88,11 +89,11 @@ export const MobileChannelsList: React.FC = () => {
 
   return (
     <div className={`flex-1 flex flex-col h-full overflow-hidden select-none ${
-      isMidnight ? 'bg-[#0B0F17] text-slate-100' : 'bg-pink-50/40'
+      isMidnight ? 'bg-[#0B0F17] text-slate-100' : 'bg-female-canvas text-slate-800'
     }`}>
       {/* 1. Main Chats Header */}
       <div className={`px-4 py-3.5 border-b flex items-center justify-between shrink-0 z-10 ${
-        isMidnight ? 'bg-[#0B0F17]/95 border-slate-800/80 backdrop-blur-xl' : 'bg-white/95 border-pink-100'
+        isMidnight ? 'bg-[#0B0F17]/95 border-slate-800/80 backdrop-blur-xl' : 'bg-white/90 border-pink-100/80 backdrop-blur-xl'
       }`}>
         <h2 className={`text-xl font-black tracking-tight ${
           isMidnight ? 'text-slate-100' : 'text-slate-800'
@@ -131,21 +132,20 @@ export const MobileChannelsList: React.FC = () => {
                   sounds.playClick();
                   setShowFindBuddyModal(true);
                 }}
-                className="p-2 rounded-2xl transition-colors bg-pink-50 hover:bg-pink-100 text-rose-600"
-                title="Find User / Buddy"
+                className="w-9 h-9 rounded-full bg-pink-50/80 border border-pink-100 text-slate-600 hover:text-rose-500 hover:bg-pink-100 flex items-center justify-center transition-colors"
+                title="Start Audio/Video Call"
               >
-                <UserPlus className="w-4 h-4" />
+                <Phone className="w-4 h-4" />
               </button>
               <button
                 onClick={() => {
                   sounds.playClick();
                   setShowCreateRoomModal(true);
                 }}
-                className="p-2 px-3 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs flex items-center gap-1 shadow-sm transition-all active:scale-95"
-                title="New Group Chat"
+                className="w-9 h-9 rounded-full bg-gradient-to-tr from-pink-500 to-rose-500 text-white flex items-center justify-center shadow-md shadow-pink-500/30 active:scale-95 transition-all"
+                title="New Chat / Group"
               >
-                <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">New Group</span>
+                <Plus className="w-4 h-4 stroke-[3]" />
               </button>
             </>
           )}
@@ -164,7 +164,7 @@ export const MobileChannelsList: React.FC = () => {
             className={`w-full pl-9 pr-4 py-2 rounded-2xl text-xs font-medium focus:outline-none transition-all ${
               isMidnight
                 ? 'bg-[#111827]/80 border border-slate-800 text-slate-100 placeholder-slate-500 focus:border-cyan-500 shadow-inner'
-                : 'bg-white border border-pink-200/80 focus:border-pink-400 text-slate-800 placeholder-slate-400 shadow-2xs'
+                : 'bg-white/85 border border-pink-100/90 focus:border-rose-400 text-slate-800 placeholder-slate-400 shadow-2xs'
             }`}
           />
         </div>
@@ -183,14 +183,14 @@ export const MobileChannelsList: React.FC = () => {
                 sounds.playClick();
                 setFilterType(tab.id as any);
               }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 ${
                 filterType === tab.id
                   ? isMidnight
                     ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 text-white shadow-md shadow-blue-950/60 glow-cyan-blue'
-                    : 'bg-rose-500 text-white shadow-2xs'
+                    : 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-xs'
                   : isMidnight
                   ? 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800/80'
-                  : 'bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50'
+                  : 'bg-white/80 text-slate-600 border border-pink-100/70 hover:bg-pink-50'
               }`}
             >
               {tab.label}
@@ -263,7 +263,7 @@ export const MobileChannelsList: React.FC = () => {
                       : 'bg-rose-50/90 border-rose-200/90 shadow-xs ring-1 ring-rose-200'
                     : isMidnight
                     ? 'bg-slate-900/60 border-slate-800/80 hover:bg-slate-800/80'
-                    : 'bg-white/95 border-pink-100 hover:border-pink-200/80 shadow-2xs'
+                    : 'bg-white/85 border-pink-100/80 hover:bg-white shadow-2xs'
                 }`}
               >
                 {/* Left: Avatar / Group Icon + Room Info */}
@@ -271,18 +271,22 @@ export const MobileChannelsList: React.FC = () => {
                   <div className="relative shrink-0">
                     {isDirect && directTarget ? (
                       <>
-                        <CuteAvatar
-                          id={directTarget.avatarId}
-                          customUrl={directTarget.customAvatarUrl}
-                          size="md"
-                          className="ring-2 ring-pink-100 shadow-2xs"
-                        />
+                        <div className={isMidnight ? '' : 'p-0.5 rounded-full ring-2 ring-pink-200'}>
+                          <CuteAvatar
+                            id={directTarget.avatarId}
+                            customUrl={directTarget.customAvatarUrl}
+                            size="md"
+                            className={isMidnight ? 'ring-2 ring-blue-500/30' : 'border border-white'}
+                          />
+                        </div>
                         {targetPresence?.isOnline && (
-                          <span className="absolute -top-0.5 -left-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white ring-1 ring-emerald-300 animate-pulse" />
+                          <span className="absolute -top-0.5 -left-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-white ring-1 ring-emerald-200" />
                         )}
                       </>
                     ) : (
-                      <div className="w-11 h-11 rounded-2xl bg-pink-100/80 border border-pink-200/60 flex items-center justify-center text-xl shadow-2xs">
+                      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-xl shadow-2xs ${
+                        isMidnight ? 'bg-slate-800 border border-slate-700' : 'bg-pink-100/80 border border-pink-200/60'
+                      }`}>
                         {room.icon || '💬'}
                       </div>
                     )}
@@ -310,9 +314,7 @@ export const MobileChannelsList: React.FC = () => {
                       </div>
 
                       {timeString && (
-                        <span className={`text-[10px] font-medium shrink-0 ml-1 ${
-                          isMidnight ? 'text-slate-400' : 'text-slate-400'
-                        }`}>
+                        <span className="text-[10px] font-medium shrink-0 ml-1 text-slate-400">
                           {timeString}
                         </span>
                       )}
@@ -324,7 +326,7 @@ export const MobileChannelsList: React.FC = () => {
                         <span className={`text-[11px] font-semibold animate-pulse truncate ${
                           isMidnight ? 'text-cyan-400' : 'text-rose-500'
                         }`}>
-                          typing...
+                          Typing...
                         </span>
                       ) : (
                         <p className={`text-[11px] truncate leading-tight ${
@@ -336,10 +338,10 @@ export const MobileChannelsList: React.FC = () => {
 
                       {/* Unread badge */}
                       {(room.unreadCount || 0) > 0 && (
-                        <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm ${
+                        <span className={`shrink-0 min-w-5 h-5 px-1.5 rounded-full text-[10px] font-bold flex items-center justify-center shadow-sm ${
                           isMidnight
                             ? 'bg-blue-600 text-white shadow-blue-900/60 ring-1 ring-cyan-400/40'
-                            : 'bg-rose-500 text-white shadow-2xs animate-pulse'
+                            : 'bg-rose-500 text-white shadow-xs'
                         }`}>
                           {room.unreadCount}
                         </span>

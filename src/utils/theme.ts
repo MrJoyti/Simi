@@ -18,19 +18,19 @@ export interface ThemeStyles {
 
 export const THEMES: Record<ThemeColor, ThemeStyles> = {
   strawberry: {
-    name: 'Strawberry Milk',
-    icon: '🍓',
-    bodyBg: '#FFF5F6',
-    sidebarBg: '#FFF0F2',
-    accent: '#FB7185',
-    accentHover: '#F43F5E',
-    accentText: '#9F1239',
+    name: 'Simi Rose',
+    icon: '🌸',
+    bodyBg: '#FFF7F9',
+    sidebarBg: '#FFF0F4',
+    accent: '#F43F5E',
+    accentHover: '#E11D48',
+    accentText: '#BE123C',
     accentLight: '#FFE4E6',
     accentBorder: '#FECDD3',
-    userBubble: 'bg-gradient-to-r from-rose-400 to-pink-400 text-white shadow-rose-200/50',
+    userBubble: 'bg-gradient-to-r from-rose-500 via-pink-500 to-rose-400 text-white shadow-md shadow-pink-200/50',
     userBubbleText: 'text-white',
-    ring: 'focus:ring-rose-300',
-    tagBg: 'bg-rose-100/70 text-rose-800',
+    ring: 'focus:ring-pink-300',
+    tagBg: 'bg-pink-100/70 text-pink-800',
   },
   matcha: {
     name: 'Matcha Latte',
@@ -109,20 +109,73 @@ export const THEMES: Record<ThemeColor, ThemeStyles> = {
   },
 };
 
+export const femaleTheme = {
+  background: '#FFF7F9',
+  surface: 'rgba(255, 255, 255, 0.88)',
+  surfaceSoft: 'rgba(255, 245, 247, 0.75)',
+  primary: '#F43F5E',
+  secondary: '#EC4899',
+  accent: '#E11D74',
+  text: '#1F1625',
+  muted: '#7A6E82',
+  success: '#10B981',
+  danger: '#EF4444',
+  gradient: 'linear-gradient(135deg, #F43F5E 0%, #EC4899 50%, #D946EF 100%)',
+  shadow: '0 10px 30px -5px rgba(244, 63, 94, 0.1)',
+  border: 'rgba(244, 114, 182, 0.25)',
+  radius: '1.25rem',
+};
+
+export const maleTheme = {
+  background: '#0B0F17',
+  surface: 'rgba(17, 24, 39, 0.78)',
+  surfaceSoft: 'rgba(17, 24, 39, 0.65)',
+  primary: '#3B82F6',
+  secondary: '#06B6D4',
+  accent: '#60A5FA',
+  text: '#F1F5F9',
+  muted: '#94A3B8',
+  success: '#10B981',
+  danger: '#EF4444',
+  gradient: 'linear-gradient(135deg, #A855F7 0%, #3B82F6 50%, #06B6D4 100%)',
+  shadow: '0 10px 35px -5px rgba(0, 0, 0, 0.5)',
+  border: 'rgba(59, 130, 246, 0.16)',
+  radius: '1.25rem',
+};
+
 export interface SimiThemeResolution {
   isMale: boolean;
+  isFemale: boolean;
   theme: ThemeColor;
   styles: ThemeStyles;
 }
 
 export function resolveSimiTheme(user?: { gender?: string; theme?: ThemeColor } | null, activeThemeName?: ThemeColor): SimiThemeResolution {
-  const isMale = user?.gender === 'male' || activeThemeName === 'midnight';
-  const effectiveTheme: ThemeColor = isMale ? 'midnight' : (user?.theme || activeThemeName || 'strawberry');
+  // Gender-based theme rule: Female users must NEVER receive male theme; Male users must NEVER receive female theme.
+  let isMale = false;
+  if (user?.gender === 'female') {
+    isMale = false;
+  } else if (user?.gender === 'male') {
+    isMale = true;
+  } else {
+    isMale = activeThemeName === 'midnight';
+  }
+
+  const isFemale = !isMale;
+  const effectiveTheme: ThemeColor = isMale
+    ? 'midnight'
+    : (user?.theme && user.theme !== 'midnight' ? user.theme : (activeThemeName && activeThemeName !== 'midnight' ? activeThemeName : 'strawberry'));
+
   return {
     isMale,
+    isFemale,
     theme: effectiveTheme,
     styles: THEMES[effectiveTheme] || THEMES.strawberry,
   };
+}
+
+export function getUserTheme(user?: { gender?: string; theme?: ThemeColor } | null, activeThemeName?: ThemeColor): SimiThemeResolution {
+  return resolveSimiTheme(user, activeThemeName);
 }
 
 export interface ChatPatternDefinition {

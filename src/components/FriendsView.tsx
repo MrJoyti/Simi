@@ -13,10 +13,12 @@ import {
   Users,
   Bell,
   Inbox,
+  Plus,
 } from 'lucide-react';
 import { sounds } from '../utils/sound';
 import { getUserPresence } from '../utils/presence';
 import { MALE_DEMO_ONLINE_FRIENDS } from '../utils/maleDemoData';
+import { FEMALE_DEMO_ONLINE_FRIENDS, FEMALE_DEMO_SUGGESTED_USERS } from '../utils/femaleDemoData';
 
 export const FriendsView: React.FC = () => {
   const {
@@ -38,7 +40,8 @@ export const FriendsView: React.FC = () => {
     theme,
   } = useChat();
 
-  const isMidnight = theme === 'midnight';
+  const isMale = currentUser?.gender ? currentUser.gender === 'male' : theme === 'midnight';
+  const isMidnight = isMale;
 
   const incomingRequests = buddyRequests.filter(
     (r) => r.toUserId === currentUser?.id && r.status === 'pending'
@@ -81,7 +84,7 @@ export const FriendsView: React.FC = () => {
   return (
     <div
       className={`flex-1 flex flex-col h-full overflow-y-auto p-4 sm:p-6 ${
-        isMidnight ? 'bg-[#0B0F17] text-slate-100 pb-20' : 'bg-white/70'
+        isMidnight ? 'bg-[#0B0F17] text-slate-100 pb-20' : 'bg-female-canvas text-slate-800 pb-16'
       }`}
     >
       {/* 1. Header Bar */}
@@ -91,17 +94,17 @@ export const FriendsView: React.FC = () => {
             isMidnight ? 'text-slate-100' : 'text-slate-800'
           }`}
         >
-          {isMidnight ? 'Friends' : 'Buddies & Friend Requests'}
+          Friends
         </h2>
 
         <div className="flex items-center gap-2">
           {currentUser && !isMidnight && (
             <button
               onClick={copyMyId}
-              className="flex items-center gap-1.5 px-3 py-1.5 border rounded-2xl text-xs font-bold shadow-2xs transition-all bg-white hover:bg-pink-50 border-pink-200 text-rose-600"
+              className="flex items-center gap-1.5 px-3 py-1.5 border rounded-full text-xs font-bold shadow-2xs transition-all bg-white hover:bg-pink-50 border-pink-200 text-rose-600"
             >
               {copiedId ? (
-                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                <Check className="w-3.5 h-3.5 text-emerald-500" />
               ) : (
                 <Copy className="w-3.5 h-3.5" />
               )}
@@ -117,12 +120,12 @@ export const FriendsView: React.FC = () => {
             className={`flex items-center gap-1.5 p-2 rounded-2xl text-xs font-bold shadow-xs hover:opacity-95 transition-transform active:scale-95 ${
               isMidnight
                 ? 'bg-slate-900 border border-slate-800 text-slate-300 hover:text-white'
-                : 'bg-gradient-to-r from-pink-500 to-rose-500 text-white px-3.5 py-1.5'
+                : 'bg-gradient-to-r from-pink-500 to-rose-500 text-white px-3.5 py-1.5 rounded-full'
             }`}
             title="Find User by ID"
           >
             <UserPlus className="w-4 h-4" />
-            {!isMidnight && <span>Find Buddy by ID</span>}
+            <span>Find Buddy</span>
           </button>
         </div>
       </div>
@@ -134,11 +137,11 @@ export const FriendsView: React.FC = () => {
           type="text"
           value={filterQuery}
           onChange={(e) => setFilterQuery(e.target.value)}
-          placeholder={isMidnight ? "Search friends or @username..." : "Search by name or @username..."}
+          placeholder="Search friends or @username..."
           className={`w-full pl-9 pr-4 py-2 rounded-2xl text-xs font-medium focus:outline-none transition-all ${
             isMidnight
               ? 'bg-[#111827]/80 border border-slate-800 text-slate-100 placeholder-slate-500 focus:border-cyan-500 shadow-inner'
-              : 'bg-white border-slate-200 text-slate-800 focus:ring-2 focus:ring-pink-300'
+              : 'bg-white/85 border border-pink-100/90 text-slate-800 placeholder-slate-400 focus:border-rose-400 shadow-2xs'
           }`}
         />
       </div>
@@ -146,8 +149,8 @@ export const FriendsView: React.FC = () => {
       {/* 3. Filter Pills */}
       <div className="flex items-center gap-2 overflow-x-auto scrollbar-none mb-4">
         {[
-          { id: 'buddies', label: `All (${buddies.length})` },
-          { id: 'explore', label: `Online (${onlineBuddies.length || MALE_DEMO_ONLINE_FRIENDS.length})` },
+          { id: 'buddies', label: `All (${buddies.length || '2.4K'})` },
+          { id: 'explore', label: `Online (${onlineBuddies.length || (isMidnight ? MALE_DEMO_ONLINE_FRIENDS.length : 320)})` },
           { id: 'requests', label: incomingRequests.length > 0 ? `Requests (${incomingRequests.length})` : 'Requests' },
         ].map((tab) => (
           <button
@@ -156,14 +159,14 @@ export const FriendsView: React.FC = () => {
               sounds.playClick();
               setFilterTab(tab.id as any);
             }}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+            className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 ${
               filterTab === tab.id
                 ? isMidnight
                   ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 text-white shadow-md shadow-blue-950/60 glow-cyan-blue'
-                  : 'bg-rose-500 text-white shadow-2xs'
+                  : 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-xs'
                 : isMidnight
                 ? 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800/80'
-                : 'bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50'
+                : 'bg-white/80 text-slate-600 border border-pink-100/70 hover:bg-pink-50'
             }`}
           >
             {tab.label}
@@ -171,23 +174,32 @@ export const FriendsView: React.FC = () => {
         ))}
       </div>
 
-      {/* 4. For Male Experience: Online Now Horizontal Row */}
-      {isMidnight && filterTab !== 'requests' && (
+      {/* 4. Online Now Horizontal Row (matching reference Screen 3) */}
+      {filterTab !== 'requests' && (
         <div className="mb-5 space-y-2.5">
           <div className="flex items-center justify-between px-1">
-            <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider">
+            <h3 className={`text-xs font-bold uppercase tracking-wider ${
+              isMidnight ? 'text-slate-200' : 'text-slate-700'
+            }`}>
               Online Now
             </h3>
             <button
               onClick={() => sounds.playClick()}
-              className="text-[11px] font-bold text-cyan-400 hover:underline"
+              className={`text-[11px] font-bold hover:underline ${
+                isMidnight ? 'text-cyan-400' : 'text-rose-500'
+              }`}
             >
               See All
             </button>
           </div>
 
           <div className="flex items-center gap-3.5 overflow-x-auto scrollbar-none py-1">
-            {(onlineBuddies.length > 0 ? onlineBuddies : MALE_DEMO_ONLINE_FRIENDS).map((buddy: any) => (
+            {(onlineBuddies.length > 0
+              ? onlineBuddies
+              : isMidnight
+              ? MALE_DEMO_ONLINE_FRIENDS
+              : FEMALE_DEMO_ONLINE_FRIENDS
+            ).map((buddy: any) => (
               <div
                 key={buddy.id}
                 onClick={() => {
@@ -197,15 +209,23 @@ export const FriendsView: React.FC = () => {
                 className="flex flex-col items-center shrink-0 cursor-pointer group active:scale-95 transition-transform"
               >
                 <div className="relative">
-                  <CuteAvatar
-                    id={buddy.avatarId || buddy.avatar || 'bunny'}
-                    customUrl={buddy.customAvatarUrl || buddy.customAvatar}
-                    size="md"
-                    className="border-2 border-slate-800 ring-2 ring-blue-500/30 group-hover:ring-cyan-400 transition-all"
-                  />
-                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-[#0B0F17] shadow-sm" />
+                  <div className={isMidnight ? '' : 'story-ring-female p-[2px]'}>
+                    <CuteAvatar
+                      id={buddy.avatarId || buddy.avatar || 'bunny'}
+                      customUrl={buddy.customAvatarUrl || buddy.customAvatar}
+                      size="md"
+                      className={`border-2 ${
+                        isMidnight
+                          ? 'border-slate-800 ring-2 ring-blue-500/30'
+                          : 'border-white'
+                      }`}
+                    />
+                  </div>
+                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-white shadow-xs" />
                 </div>
-                <span className="text-[10px] mt-1.5 font-bold text-slate-300 max-w-[56px] truncate text-center">
+                <span className={`text-[10px] mt-1.5 font-bold max-w-[56px] truncate text-center ${
+                  isMidnight ? 'text-slate-300' : 'text-slate-700'
+                }`}>
                   {buddy.name}
                 </span>
               </div>
@@ -508,10 +528,14 @@ export const FriendsView: React.FC = () => {
                   ) : getBuddyRequestState(user.id) === 'requestSent' ? (
                     <button
                       onClick={() => cancelBuddyRequest(user.id)}
-                      className="px-3 py-1.5 rounded-2xl text-xs font-bold text-rose-500 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors"
+                      className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-colors ${
+                        isMidnight
+                          ? 'text-rose-400 bg-rose-950/40 border border-rose-900'
+                          : 'text-rose-500 bg-pink-50 hover:bg-pink-100 border border-pink-200'
+                      }`}
                       title="Cancel Buddy Request"
                     >
-                      Cancel Request
+                      Pending
                     </button>
                   ) : getBuddyRequestState(user.id) === 'incomingRequest' ? (
                     <div className="flex items-center gap-1">
@@ -522,13 +546,13 @@ export const FriendsView: React.FC = () => {
                           );
                           acceptBuddyRequest(req?.id || user.id, user.id);
                         }}
-                        className="px-3 py-1.5 rounded-2xl text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 transition-colors shadow-2xs"
+                        className="px-3 py-1.5 rounded-full text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 transition-colors shadow-2xs"
                       >
                         Accept
                       </button>
                       <button
                         onClick={() => declineBuddyRequest(user.id)}
-                        className="px-2.5 py-1.5 rounded-2xl text-xs font-bold text-slate-600 bg-slate-200 hover:bg-slate-300 transition-colors"
+                        className="px-2.5 py-1.5 rounded-full text-xs font-bold text-slate-600 bg-slate-200 hover:bg-slate-300 transition-colors"
                       >
                         Decline
                       </button>
@@ -536,14 +560,14 @@ export const FriendsView: React.FC = () => {
                   ) : (
                     <button
                       onClick={() => sendBuddyRequest(user)}
-                      className={`px-4 py-1.5 rounded-2xl text-white text-xs font-bold flex items-center gap-1 shadow-md transition-transform active:scale-95 ${
+                      className={`px-4 py-1.5 rounded-full text-white text-xs font-bold flex items-center gap-1 shadow-sm transition-transform active:scale-95 ${
                         isMidnight
                           ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 shadow-blue-900/40 glow-cyan-blue'
-                          : 'bg-gradient-to-r from-pink-500 to-rose-500'
+                          : 'bg-gradient-to-r from-pink-500 to-rose-500 hover:opacity-95 shadow-xs'
                       }`}
                     >
-                      <UserPlus className="w-3.5 h-3.5" />
-                      <span>{isMidnight ? 'Add' : 'Add Buddy'}</span>
+                      <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                      <span>Add</span>
                     </button>
                   )}
                 </div>

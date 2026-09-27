@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useChat } from '../context/ChatContext';
 import { CuteAvatar } from '../utils/avatars';
+import { resolveSimiTheme } from '../utils/theme';
 import {
   X,
   Image as ImageIcon,
@@ -27,7 +28,8 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
   onPostCreated,
 }) => {
   const { currentUser, addStory, triggerConfetti, theme } = useChat();
-  const isMidnight = theme === 'midnight' || currentUser?.gender === 'male';
+  const { isFemale, isMale } = resolveSimiTheme(currentUser);
+  const isMidnight = isMale && (theme === 'midnight' || currentUser?.gender === 'male');
 
   const [text, setText] = useState('');
   const [images, setImages] = useState<string[]>([
@@ -98,7 +100,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
         {/* Top Header */}
         <div
           className={`flex items-center justify-between px-5 py-3.5 border-b ${
-            isMidnight ? 'border-slate-800/80 bg-slate-900/60' : 'border-pink-100 bg-pink-50/50'
+            isMidnight ? 'border-slate-800/80 bg-slate-900/60' : 'border-pink-100/80 bg-[#FFF7F9]'
           }`}
         >
           <button
@@ -107,7 +109,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
               onClose();
             }}
             className={`p-2 rounded-2xl transition-colors ${
-              isMidnight ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:bg-pink-100'
+              isMidnight ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:bg-pink-100/70'
             }`}
           >
             <X className="w-5 h-5" />
@@ -118,10 +120,10 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
           <button
             onClick={handlePost}
             disabled={!text.trim() && images.length === 0}
-            className={`px-4 py-1.5 rounded-2xl font-bold text-xs shadow-md transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed ${
+            className={`px-4 py-1.5 rounded-full font-bold text-xs shadow-md transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed ${
               isMidnight
                 ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 text-white hover:opacity-95 shadow-blue-900/40'
-                : 'bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:opacity-95'
+                : 'bg-gradient-to-r from-rose-500 via-pink-500 to-rose-400 text-white hover:opacity-95 shadow-rose-200/60'
             }`}
           >
             Post
@@ -207,11 +209,13 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
               className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all border ${
                 isMidnight
                   ? 'bg-slate-900/60 hover:bg-slate-800/80 border-slate-800/80 text-slate-200'
-                  : 'bg-slate-50 hover:bg-pink-50 border-slate-200/60 text-slate-700'
+                  : 'bg-white hover:bg-pink-50/70 border-pink-100/90 text-slate-700 shadow-2xs'
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center">
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                  isMidnight ? 'bg-blue-500/10 text-blue-400' : 'bg-pink-100/80 text-rose-500'
+                }`}>
                   <ImageIcon className="w-4 h-4" />
                 </div>
                 <span className="text-xs font-semibold">Add Photos / Videos</span>
@@ -228,11 +232,13 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
               className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all border ${
                 isMidnight
                   ? 'bg-slate-900/60 hover:bg-slate-800/80 border-slate-800/80 text-slate-200'
-                  : 'bg-slate-50 hover:bg-pink-50 border-slate-200/60 text-slate-700'
+                  : 'bg-white hover:bg-pink-50/70 border-pink-100/90 text-slate-700 shadow-2xs'
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center">
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                  isMidnight ? 'bg-cyan-500/10 text-cyan-400' : 'bg-purple-100/80 text-purple-600'
+                }`}>
                   <Mic className="w-4 h-4" />
                 </div>
                 <span className="text-xs font-semibold">Add Voice Note</span>
@@ -250,11 +256,13 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
               className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all border ${
                 isMidnight
                   ? 'bg-slate-900/60 hover:bg-slate-800/80 border-slate-800/80 text-slate-200'
-                  : 'bg-slate-50 hover:bg-pink-50 border-slate-200/60 text-slate-700'
+                  : 'bg-white hover:bg-pink-50/70 border-pink-100/90 text-slate-700 shadow-2xs'
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center">
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                  isMidnight ? 'bg-rose-500/10 text-rose-400' : 'bg-amber-100/80 text-amber-600'
+                }`}>
                   <MapPin className="w-4 h-4" />
                 </div>
                 <span className="text-xs font-semibold">
@@ -274,11 +282,13 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
               className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all border ${
                 isMidnight
                   ? 'bg-slate-900/60 hover:bg-slate-800/80 border-slate-800/80 text-slate-200'
-                  : 'bg-slate-50 hover:bg-pink-50 border-slate-200/60 text-slate-700'
+                  : 'bg-white hover:bg-pink-50/70 border-pink-100/90 text-slate-700 shadow-2xs'
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                  isMidnight ? 'bg-amber-500/10 text-amber-400' : 'bg-rose-100/80 text-rose-500'
+                }`}>
                   <Smile className="w-4 h-4" />
                 </div>
                 <span className="text-xs font-semibold">
@@ -297,11 +307,13 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
               className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all border ${
                 isMidnight
                   ? 'bg-slate-900/60 hover:bg-slate-800/80 border-slate-800/80 text-slate-200'
-                  : 'bg-slate-50 hover:bg-pink-50 border-slate-200/60 text-slate-700'
+                  : 'bg-white hover:bg-pink-50/70 border-pink-100/90 text-slate-700 shadow-2xs'
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center">
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                  isMidnight ? 'bg-purple-500/10 text-purple-400' : 'bg-sky-100/80 text-sky-600'
+                }`}>
                   <Tag className="w-4 h-4" />
                 </div>
                 <span className="text-xs font-semibold">Add Tag / Mention</span>

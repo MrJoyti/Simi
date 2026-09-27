@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useChat } from '../context/ChatContext';
 import { StickerPicker } from './StickerPicker';
 import { ImagePreviewModal } from './ImagePreviewModal';
-import { THEMES } from '../utils/theme';
+import { THEMES, resolveSimiTheme } from '../utils/theme';
 import { StickerItem } from '../types/chat';
 import { uploadImageToCloudinary } from '../utils/cloudinary';
 import {
@@ -387,11 +387,16 @@ export const ChatInput: React.FC = () => {
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  const isMidnight = theme === 'midnight';
+  const { isFemale, isMale } = resolveSimiTheme(currentUser);
+  const isMidnight = isMale && theme === 'midnight';
 
   return (
-    <div className={`relative p-3 sm:p-4 border-t backdrop-blur-md ${
-      isMidnight ? 'bg-[#111821] border-slate-800 text-slate-200' : 'bg-white/90 border-pink-100'
+    <div className={`relative p-2.5 sm:p-3.5 border-t backdrop-blur-md ${
+      isMidnight
+        ? 'bg-[#111821] border-slate-800 text-slate-200'
+        : isFemale
+        ? 'bg-[#FFF7F9]/95 border-pink-100/90 text-slate-800'
+        : 'bg-white/90 border-pink-100'
     }`}>
       {/* Sticker Drawer */}
       {showStickers && (
@@ -599,9 +604,11 @@ export const ChatInput: React.FC = () => {
           {/* Input Controls Row */}
           <form
             onSubmit={handleSend}
-            className={`flex items-center gap-1 sm:gap-2 border rounded-3xl p-1 sm:p-1.5 transition-all ${
+            className={`flex items-center gap-1 sm:gap-2 border rounded-full p-1 sm:p-1.5 transition-all ${
               isMidnight
                 ? 'bg-[#111827]/90 hover:bg-[#131E35] focus-within:bg-[#131E35] border-slate-800 focus-within:border-cyan-500 shadow-xl'
+                : isFemale
+                ? 'bg-white shadow-xs border-pink-200/80 focus-within:border-rose-400 focus-within:ring-2 focus-within:ring-rose-100'
                 : 'bg-pink-50/50 hover:bg-pink-50/80 focus-within:bg-white border-pink-200/70 focus-within:border-pink-400 focus-within:ring-2 focus-within:ring-pink-200'
             }`}
           >
@@ -675,10 +682,10 @@ export const ChatInput: React.FC = () => {
             {text.trim() ? (
               <button
                 type="submit"
-                className={`p-2 sm:p-2.5 rounded-2xl flex items-center justify-center shrink-0 transition-all active:scale-95 ${
+                className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 transition-all active:scale-95 ${
                   isMidnight
                     ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 text-white shadow-md shadow-blue-950/60 glow-cyan-blue'
-                    : 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md shadow-pink-200'
+                    : 'bg-gradient-to-r from-rose-500 via-pink-500 to-rose-400 text-white shadow-md shadow-rose-200/60'
                 }`}
                 title="Send message"
               >
@@ -688,9 +695,11 @@ export const ChatInput: React.FC = () => {
               <button
                 type="button"
                 onClick={startRecording}
-                className={`p-2 sm:p-2.5 rounded-2xl flex items-center justify-center shrink-0 transition-all active:scale-95 ${
+                className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 transition-all active:scale-95 ${
                   isMidnight
                     ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-md shadow-blue-950/60 glow-cyan-blue'
+                    : isFemale
+                    ? 'bg-gradient-to-r from-rose-500 via-pink-500 to-rose-400 text-white shadow-md shadow-rose-200/60'
                     : 'text-slate-500 hover:text-rose-600 hover:bg-pink-100/50'
                 }`}
                 title="Record voice note"

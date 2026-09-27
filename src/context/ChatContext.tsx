@@ -17,6 +17,7 @@ import {
   SocialFeedPost,
 } from '../types/chat';
 import { MALE_DEMO_POSTS } from '../utils/maleDemoData';
+import { FEMALE_DEMO_POSTS } from '../utils/femaleDemoData';
 import { Capacitor } from '@capacitor/core';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { sounds } from '../utils/sound';
@@ -261,23 +262,28 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [showMediaHubModal, setShowMediaHubModal] = useState<boolean>(false);
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
 
-  // Social feed posts state (persisted locally with fallback to MALE_DEMO_POSTS)
+  // Social feed posts state (persisted locally with fallback based on user gender)
   const [feedPosts, setFeedPosts] = useState<SocialFeedPost[]>(() => {
     try {
-      const saved = localStorage.getItem('simi_male_feed_posts');
-      return saved ? JSON.parse(saved) : MALE_DEMO_POSTS;
+      const cachedProfile = localStorage.getItem('mochichat_profile_cache');
+      const isMale = cachedProfile ? JSON.parse(cachedProfile)?.gender === 'male' : false;
+      const key = isMale ? 'simi_male_feed_posts' : 'simi_female_feed_posts';
+      const fallback = isMale ? MALE_DEMO_POSTS : FEMALE_DEMO_POSTS;
+      const saved = localStorage.getItem(key);
+      return saved ? JSON.parse(saved) : fallback;
     } catch {
-      return MALE_DEMO_POSTS;
+      return FEMALE_DEMO_POSTS;
     }
   });
 
   const addFeedPost = useCallback((postData: { content: string; images?: string[] }) => {
     const user = currentUserRef.current;
+    const isMale = user?.gender === 'male';
     const newPost: SocialFeedPost = {
       id: `post_${Date.now()}`,
       authorId: user?.id || 'current_user',
-      authorName: user?.name || 'Joyti Chakraborty',
-      authorAvatar: user?.avatarId || 'falcon',
+      authorName: user?.name || (isMale ? 'Joyti Chakraborty' : 'Maya Islam'),
+      authorAvatar: user?.avatarId || (isMale ? 'falcon' : 'bunny'),
       authorCustomAvatar: user?.customAvatarUrl,
       createdAt: Date.now(),
       timeAgo: 'Just now',
@@ -292,8 +298,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
     setFeedPosts((prev) => {
       const updated = [newPost, ...prev];
+      const storageKey = isMale ? 'simi_male_feed_posts' : 'simi_female_feed_posts';
       try {
-        localStorage.setItem('simi_male_feed_posts', JSON.stringify(updated));
+        localStorage.setItem(storageKey, JSON.stringify(updated));
       } catch {
         // ignore
       }
@@ -2582,11 +2589,12 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const theme: ThemeColor = currentUser?.gender === 'male'
     ? 'midnight'
-    : (currentUser?.theme || 'strawberry');
+    : (currentUser?.theme && currentUser.theme !== 'midnight' ? currentUser.theme : 'strawberry');
 
   const setTheme = useCallback(
     (t: ThemeColor) => {
       if (currentUser?.gender === 'male') return; // Male theme locked to midnight
+      if (currentUser?.gender === 'female' && t === 'midnight') return; // Female users must never receive midnight theme
       updateProfile({ theme: t });
     },
     [currentUser?.gender, updateProfile]

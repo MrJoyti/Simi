@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useChat } from '../context/ChatContext';
 import { CuteAvatar } from '../utils/avatars';
-import { THEMES, CHAT_PATTERNS } from '../utils/theme';
+import { THEMES, CHAT_PATTERNS, resolveSimiTheme } from '../utils/theme';
 import { CUTE_STICKERS } from '../utils/stickers';
 import { VoiceNotePlayer } from './VoiceNotePlayer';
 import { StickerItem, ChatMessage } from '../types/chat';
@@ -40,7 +40,8 @@ export const MessageList: React.FC = () => {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const activeTheme = THEMES[theme] || THEMES.strawberry;
+  const { isFemale, isMale } = resolveSimiTheme(currentUser);
+  const activeTheme = isFemale ? THEMES.strawberry : (THEMES[theme] || THEMES.strawberry);
   const activePattern = CHAT_PATTERNS[chatPattern] || CHAT_PATTERNS.mochi_dots;
 
   // Long press timer ref for mobile touch devices
@@ -110,7 +111,7 @@ export const MessageList: React.FC = () => {
     }
   };
 
-  const isMidnight = theme === 'midnight';
+  const isMidnight = isMale && theme === 'midnight';
 
   return (
     <div
@@ -118,7 +119,7 @@ export const MessageList: React.FC = () => {
       style={{
         backgroundImage: activePattern.backgroundImage !== 'none' ? activePattern.backgroundImage : undefined,
         backgroundSize: activePattern.backgroundSize || undefined,
-        backgroundColor: activeTheme.bodyBg,
+        backgroundColor: isFemale ? '#FFF7F9' : activeTheme.bodyBg,
       }}
     >
       {/* Offline Alert Pill */}
@@ -302,8 +303,14 @@ export const MessageList: React.FC = () => {
                         isCurrentlyBeingRepliedTo ? (isMidnight ? 'ring-2 ring-blue-500' : 'ring-2 ring-pink-400') : ''
                       } ${
                         isUser
-                          ? `${activeTheme.userBubble} rounded-br-xs font-medium`
-                          : isMidnight ? 'bg-[#131B2E]/90 text-slate-100 border border-slate-800/80 rounded-bl-xs shadow-sm backdrop-blur-md' : 'bg-white text-slate-800 border border-pink-100/90 rounded-bl-xs'
+                          ? isFemale
+                            ? 'bg-gradient-to-r from-rose-500 via-pink-500 to-rose-400 text-white shadow-sm shadow-rose-200/60 rounded-br-xs font-medium'
+                            : `${activeTheme.userBubble} rounded-br-xs font-medium`
+                          : isMidnight
+                          ? 'bg-[#131B2E]/90 text-slate-100 border border-slate-800/80 rounded-bl-xs shadow-sm backdrop-blur-md'
+                          : isFemale
+                          ? 'bg-white text-slate-800 border border-pink-100/90 rounded-bl-xs shadow-2xs'
+                          : 'bg-white text-slate-800 border border-pink-100/90 rounded-bl-xs'
                       }`}
                     >
                       {msg.content}

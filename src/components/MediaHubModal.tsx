@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { sounds } from '../utils/sound';
 import { MALE_DEMO_MEDIA_ITEMS } from '../utils/maleDemoData';
+import { FEMALE_DEMO_MEDIA_ITEMS } from '../utils/femaleDemoData';
+import { resolveSimiTheme } from '../utils/theme';
 import { MediaHubItem } from '../types/chat';
 
 interface MediaHubModalProps {
@@ -24,14 +26,17 @@ interface MediaHubModalProps {
 
 export const MediaHubModal: React.FC<MediaHubModalProps> = ({ isOpen, onClose }) => {
   const { theme, currentUser } = useChat();
-  const isMidnight = theme === 'midnight' || currentUser?.gender === 'male';
+  const { isFemale, isMale } = resolveSimiTheme(currentUser);
+  const isMidnight = isMale && (theme === 'midnight' || currentUser?.gender === 'male');
 
   const [activeTab, setActiveTab] = useState<'all' | 'photos' | 'videos' | 'voice' | 'files'>('all');
   const [selectedItem, setSelectedItem] = useState<MediaHubItem | null>(null);
 
   if (!isOpen) return null;
 
-  const filteredItems = MALE_DEMO_MEDIA_ITEMS.filter((item) => {
+  const sourceItems = isFemale ? FEMALE_DEMO_MEDIA_ITEMS : MALE_DEMO_MEDIA_ITEMS;
+
+  const filteredItems = sourceItems.filter((item) => {
     if (activeTab === 'all') return true;
     if (activeTab === 'photos' && item.type === 'photo') return true;
     if (activeTab === 'videos' && item.type === 'video') return true;
@@ -41,16 +46,22 @@ export const MediaHubModal: React.FC<MediaHubModalProps> = ({ isOpen, onClose })
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#0B0F17] text-slate-100 animate-in fade-in duration-200">
+    <div className={`fixed inset-0 z-50 flex flex-col animate-in fade-in duration-200 ${
+      isMidnight ? 'bg-[#0B0F17] text-slate-100' : 'bg-[#FFF7F9] text-slate-800'
+    }`}>
       {/* Top Header */}
-      <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-800/80 bg-[#111827]/90 backdrop-blur-xl shrink-0">
+      <div className={`flex items-center justify-between px-4 py-3.5 border-b shrink-0 ${
+        isMidnight ? 'border-slate-800/80 bg-[#111827]/90 backdrop-blur-xl' : 'border-pink-100/80 bg-white/95 backdrop-blur-xl'
+      }`}>
         <div className="flex items-center gap-3">
           <button
             onClick={() => {
               sounds.playClick();
               onClose();
             }}
-            className="p-2 rounded-2xl hover:bg-slate-800 transition-colors text-slate-300"
+            className={`p-2 rounded-2xl transition-colors ${
+              isMidnight ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-pink-50 text-slate-600'
+            }`}
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -60,7 +71,7 @@ export const MediaHubModal: React.FC<MediaHubModalProps> = ({ isOpen, onClose })
         <div className="flex items-center gap-2">
           <button
             onClick={() => sounds.playClick()}
-            className="p-2 rounded-2xl hover:bg-slate-800 text-slate-400"
+            className={`p-2 rounded-2xl ${isMidnight ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-pink-50 text-slate-500'}`}
           >
             <Search className="w-4 h-4" />
           </button>
@@ -68,12 +79,14 @@ export const MediaHubModal: React.FC<MediaHubModalProps> = ({ isOpen, onClose })
       </div>
 
       {/* Filter Chips Bar */}
-      <div className="px-4 py-2.5 flex items-center gap-2 overflow-x-auto scrollbar-none border-b border-slate-800/50 bg-[#0E1522]/80 shrink-0">
+      <div className={`px-4 py-2.5 flex items-center gap-2 overflow-x-auto scrollbar-none border-b shrink-0 ${
+        isMidnight ? 'border-slate-800/50 bg-[#0E1522]/80' : 'border-pink-100/70 bg-white/60'
+      }`}>
         {[
           { id: 'all', label: 'All' },
           { id: 'photos', label: 'Photos' },
           { id: 'videos', label: 'Videos' },
-          { id: 'voice', label: 'Voice' },
+          { id: 'voice', label: isFemale ? 'Audio' : 'Voice' },
           { id: 'files', label: 'Files' },
         ].map((tab) => (
           <button
@@ -82,10 +95,14 @@ export const MediaHubModal: React.FC<MediaHubModalProps> = ({ isOpen, onClose })
               sounds.playClick();
               setActiveTab(tab.id as any);
             }}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+            className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 ${
               activeTab === tab.id
-                ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-md shadow-blue-900/40 glow-cyan-blue'
-                : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800/80'
+                ? isMidnight
+                  ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-md shadow-blue-900/40 glow-cyan-blue'
+                  : 'bg-gradient-to-r from-rose-500 via-pink-500 to-rose-400 text-white shadow-md shadow-rose-200/60'
+                : isMidnight
+                ? 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800/80'
+                : 'bg-white text-slate-600 hover:text-rose-600 hover:bg-pink-50 border border-pink-100/80 shadow-2xs'
             }`}
           >
             {tab.label}
@@ -96,7 +113,7 @@ export const MediaHubModal: React.FC<MediaHubModalProps> = ({ isOpen, onClose })
       {/* Media Grid */}
       <div className="flex-1 overflow-y-auto p-4">
         {filteredItems.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-slate-500">
+          <div className="flex flex-col items-center justify-center py-20 text-slate-400">
             <ImageIcon className="w-10 h-10 mb-2 opacity-50" />
             <p className="text-xs">No media found in this category</p>
           </div>
@@ -109,17 +126,27 @@ export const MediaHubModal: React.FC<MediaHubModalProps> = ({ isOpen, onClose })
                   sounds.playClick();
                   setSelectedItem(item);
                 }}
-                className="group relative aspect-square rounded-2xl overflow-hidden border border-slate-800/80 bg-slate-900/80 cursor-pointer transition-all hover:border-blue-500/50 hover:scale-[1.02]"
+                className={`group relative aspect-square rounded-2xl overflow-hidden border cursor-pointer transition-all hover:scale-[1.02] ${
+                  isMidnight
+                    ? 'border-slate-800/80 bg-slate-900/80 hover:border-blue-500/50'
+                    : 'border-pink-100/90 bg-white hover:border-rose-300 hover:shadow-md shadow-2xs'
+                }`}
               >
                 {item.type === 'voice' ? (
-                  <div className="w-full h-full flex flex-col items-center justify-center p-3 bg-gradient-to-br from-indigo-950/80 via-slate-900 to-blue-950/80 text-center">
-                    <div className="w-10 h-10 rounded-full bg-blue-600/30 border border-blue-500/40 flex items-center justify-center text-cyan-400 mb-2">
+                  <div className={`w-full h-full flex flex-col items-center justify-center p-3 text-center ${
+                    isMidnight
+                      ? 'bg-gradient-to-br from-indigo-950/80 via-slate-900 to-blue-950/80'
+                      : 'bg-gradient-to-br from-rose-50 via-pink-50 to-white'
+                  }`}>
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${
+                      isMidnight ? 'bg-blue-600/30 border border-blue-500/40 text-cyan-400' : 'bg-rose-100 border border-pink-200 text-rose-500'
+                    }`}>
                       <Mic className="w-5 h-5" />
                     </div>
-                    <span className="text-[11px] font-bold text-slate-200 truncate w-full">
+                    <span className={`text-[11px] font-bold truncate w-full ${isMidnight ? 'text-slate-200' : 'text-slate-800'}`}>
                       {item.title}
                     </span>
-                    <span className="text-[10px] text-cyan-400 font-mono mt-0.5">
+                    <span className={`text-[10px] font-mono mt-0.5 ${isMidnight ? 'text-cyan-400' : 'text-rose-500 font-semibold'}`}>
                       {item.duration}
                     </span>
                   </div>

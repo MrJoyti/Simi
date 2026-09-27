@@ -57,6 +57,8 @@ export interface UserProfile {
   avatarId: string;
   customAvatarUrl?: string;
   coverUrl?: string; // Cover photo banner image URL
+  location?: string; // User location
+  joinedDate?: string; // Join date
   bio: string;
   moodEmoji: string;
   moodText: string;
@@ -224,6 +226,7 @@ export interface SocialFeedPost {
   authorCustomAvatar?: string;
   createdAt: number;
   timeAgo: string;
+  location?: string;
   isPublic?: boolean;
   content: string;
   images: string[];

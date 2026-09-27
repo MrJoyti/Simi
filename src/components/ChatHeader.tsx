@@ -39,7 +39,8 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ onToggleSidebarMobile })
 
   if (!currentRoom || !currentUser) return null;
 
-  const isMidnight = theme === 'midnight';
+  const isMale = currentUser?.gender ? currentUser.gender === 'male' : theme === 'midnight';
+  const isMidnight = isMale;
   const isDirect = currentRoom.type === 'direct' || currentRoom.isDirect;
 
   // Direct DM Buddy

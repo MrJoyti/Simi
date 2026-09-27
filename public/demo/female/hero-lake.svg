@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600" width="900" height="600">
+  <defs>
+    <linearGradient id="twilightGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fdba74" />
+      <stop offset="30%" stop-color="#f472b6" />
+      <stop offset="60%" stop-color="#c084fc" />
+      <stop offset="100%" stop-color="#4f46e5" />
+    </linearGradient>
+    <linearGradient id="lakeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#f472b6" stop-opacity="0.8" />
+      <stop offset="50%" stop-color="#c084fc" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#3730a3" />
+    </linearGradient>
+  </defs>
+  <rect width="900" height="600" fill="url(#twilightGrad)" />
+  <circle cx="520" cy="260" r="80" fill="#fef08a" opacity="0.85" filter="blur(6px)" />
+  <circle cx="520" cy="260" r="65" fill="#fff" opacity="0.9" />
+  <!-- Mountains & Castle silhouette -->
+  <path d="M0,340 Q180,240 360,320 T720,300 Q810,240 900,330 L900,600 L0,600 Z" fill="#581c87" opacity="0.45" />
+  <path d="M0,380 Q220,300 440,360 T900,350 L900,600 L0,600 Z" fill="#3b0764" opacity="0.6" />
+  <!-- Lake -->
+  <rect y="390" width="900" height="210" fill="url(#lakeGrad)" />
+  <ellipse cx="520" cy="460" rx="100" ry="20" fill="#fde047" opacity="0.35" filter="blur(5px)" />
+  <!-- Pink Flower Bush Foreground -->
+  <g fill="#f43f5e" opacity="0.9">
+    <circle cx="80" cy="540" r="50" fill="#fda4af" />
+    <circle cx="150" cy="530" r="45" fill="#f43f5e" />
+    <circle cx="220" cy="550" r="55" fill="#fb7185" />
+    <circle cx="700" cy="540" r="55" fill="#fda4af" />
+    <circle cx="770" cy="520" r="45" fill="#f43f5e" />
+    <circle cx="840" cy="550" r="60" fill="#fb7185" />
+  </g>
+</svg>
