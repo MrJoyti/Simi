@@ -59,6 +59,13 @@ import {
   registerServiceWorker,
   showPushNotification,
 } from '../utils/notifications';
+import {
+  DUMMY_USERS,
+  DUMMY_FEED_POSTS,
+  DUMMY_STORIES,
+  createDummyDirectRooms,
+  createDummyMessages,
+} from '../utils/dummyData';
 
 export interface TypingIndicatorUser {
   userId: string;
@@ -287,16 +294,18 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [dismissToast]);
 
-  // Social feed posts state (persisted locally with clean empty array fallback - Section 9 & 15)
+  // Social feed posts state (persisted locally with fallback to DUMMY_FEED_POSTS)
   const [feedPosts, setFeedPosts] = useState<SocialFeedPost[]>(() => {
     try {
       const cachedProfile = localStorage.getItem('mochichat_profile_cache');
       const isMale = cachedProfile ? JSON.parse(cachedProfile)?.gender === 'male' : false;
       const key = isMale ? 'simi_male_feed_posts' : 'simi_female_feed_posts';
       const saved = localStorage.getItem(key);
-      return saved ? JSON.parse(saved) : [];
+      const parsed = saved ? JSON.parse(saved) : [];
+      if (parsed && parsed.length > 0) return parsed;
+      return DUMMY_FEED_POSTS;
     } catch {
-      return [];
+      return DUMMY_FEED_POSTS;
     }
   });
 
@@ -419,6 +428,34 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             data.emailVerified = user.emailVerified;
             if (!data.buddyIds) data.buddyIds = [];
             if (!data.lastReadTimestamps) data.lastReadTimestamps = {};
+
+            // Enrich with complete profile picture, cover photo and initial buddies
+            const isMale = data.gender === 'male';
+            if (!data.customAvatarUrl) {
+              data.customAvatarUrl = isMale
+                ? 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&auto=format&fit=crop&q=80'
+                : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80';
+            }
+            if (!data.coverUrl) {
+              data.coverUrl = isMale
+                ? 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1200&auto=format&fit=crop&q=80'
+                : 'https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=1200&auto=format&fit=crop&q=80';
+            }
+            if (!data.bio) {
+              data.bio = isMale
+                ? 'Good people, good chats, good vibes ✨ Exploring new places, stories and connections.'
+                : 'Living life with kindness and joy 🌸 Art, poetry & coffee lover.';
+            }
+            if (!data.location) {
+              data.location = 'Dhaka, Bangladesh';
+            }
+            if (!data.joinedDate) {
+              data.joinedDate = 'Joined Jan 2024';
+            }
+
+            const initialBuddyIds = ['user_tanvir_ahmed', 'user_mira_vibe', 'user_arif_hasan', 'user_nusrat_jahan'];
+            data.buddyIds = Array.from(new Set([...data.buddyIds, ...initialBuddyIds]));
+
             setCurrentUser(data);
             try {
               localStorage.setItem('mochichat_profile_cache', JSON.stringify(data));
@@ -631,6 +668,12 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const updateCombinedRooms = () => {
       const fetched = Array.from(roomsMap.values());
+      const dummyRooms = createDummyDirectRooms(currentUserId);
+      dummyRooms.forEach((dRoom) => {
+        if (!fetched.some((r) => r.id === dRoom.id)) {
+          fetched.push(dRoom);
+        }
+      });
       fetched.sort((a, b) => (b.lastMessageTime || b.createdAt || 0) - (a.lastMessageTime || a.createdAt || 0));
       setRawRooms(fetched);
 
@@ -732,6 +775,13 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             viewers: item.viewers || [],
             reactions: item.reactions || {},
           });
+        }
+      });
+
+      // Merge with realistic dummy stories from friends
+      DUMMY_STORIES.forEach((dummyStory) => {
+        if (!validStories.some((s) => s.id === dummyStory.id)) {
+          validStories.push(dummyStory);
         }
       });
 
@@ -1258,6 +1308,20 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         list.push(currentUserRef.current);
       }
 
+      // Merge with comprehensive dummy accounts and their mutual friendship
+      const initialFriendIds = ['user_tanvir_ahmed', 'user_mira_vibe', 'user_arif_hasan', 'user_nusrat_jahan'];
+      DUMMY_USERS.forEach((dummy) => {
+        if (!list.some((u) => u.id === dummy.id || u.username === dummy.username)) {
+          const isInitialFriend = initialFriendIds.includes(dummy.id);
+          list.push({
+            ...dummy,
+            buddyIds: isInitialFriend
+              ? Array.from(new Set([...(dummy.buddyIds || []), currentUserId]))
+              : (dummy.buddyIds || []),
+          });
+        }
+      });
+
       // Auto-reconcile mutual buddies: if another user in activeUsers already has me in their buddyIds,
       // make sure I also have them in my buddyIds in local state and Firestore!
       const usersWhoHaveMeAsBuddy = list.filter((u) => u.id !== currentUserId && (u.buddyIds || []).includes(currentUserId));
@@ -1353,6 +1417,14 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
       });
+
+      // If this is a direct conversation with a dummy buddy and Firestore has no messages yet
+      if (msgs.length === 0) {
+        const dummyMsgsMap = createDummyMessages(currentUserId);
+        if (dummyMsgsMap[currentRoomId]) {
+          msgs.push(...dummyMsgsMap[currentRoomId]);
+        }
+      }
 
       setMessages(msgs);
 
@@ -2430,6 +2502,64 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setReplyingTo(null);
 
       markRoomAsRead(currentRoomId);
+      setMessages((prev) => (prev.some((m) => m.id === newMsgId) ? prev : [...prev, rawMsg]));
+
+      // If chatting with dummy accounts, simulate an interactive realistic response
+      if (currentRoomId.includes('user_mira_vibe')) {
+        setTimeout(() => {
+          setTypingUsers([{
+            userId: 'user_mira_vibe',
+            userName: 'Mira',
+            avatarId: 'bunny',
+            customAvatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80',
+            timestamp: Date.now(),
+          }]);
+          setTimeout(() => {
+            setTypingUsers([]);
+            const miraReply: ChatMessage = {
+              id: 'reply_' + Date.now(),
+              roomId: currentRoomId,
+              senderId: 'user_mira_vibe',
+              senderName: 'Mira',
+              senderAvatar: 'bunny',
+              senderCustomAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80',
+              type: 'text',
+              content: 'Got it! Looking forward to it ✨🌸',
+              reactions: {},
+              timestamp: Date.now(),
+            };
+            setMessages((prev) => [...prev, miraReply]);
+            sounds.playReceive();
+          }, 1800);
+        }, 900);
+      } else if (currentRoomId.includes('user_arif_hasan')) {
+        setTimeout(() => {
+          setTypingUsers([{
+            userId: 'user_arif_hasan',
+            userName: 'Arif Hasan',
+            avatarId: 'wolf',
+            customAvatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80',
+            timestamp: Date.now(),
+          }]);
+          setTimeout(() => {
+            setTypingUsers([]);
+            const arifReply: ChatMessage = {
+              id: 'reply_' + Date.now(),
+              roomId: currentRoomId,
+              senderId: 'user_arif_hasan',
+              senderName: 'Arif Hasan',
+              senderAvatar: 'wolf',
+              senderCustomAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80',
+              type: 'text',
+              content: 'Sounds awesome bro! Talk to you soon 🔥',
+              reactions: {},
+              timestamp: Date.now(),
+            };
+            setMessages((prev) => [...prev, arifReply]);
+            sounds.playReceive();
+          }, 1800);
+        }, 900);
+      }
 
       try {
         const msgDocRef = doc(db, 'rooms', currentRoomId, 'messages', newMsgId);

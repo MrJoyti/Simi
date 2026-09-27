@@ -136,33 +136,56 @@ export const ProfileModal: React.FC = () => {
               ) : null}
             </div>
 
-            <h3 className="text-base font-bold text-slate-800">{selectedProfileUser.name}</h3>
+            <div className="flex items-center gap-1.5 justify-center mt-1">
+              <h3 className={`text-base font-bold ${isMidnight ? 'text-slate-100' : 'text-slate-800'}`}>
+                {selectedProfileUser.name}
+              </h3>
+              <CheckCircle2 className={`w-4 h-4 ${isMidnight ? 'text-blue-400 fill-blue-400/20' : 'text-rose-500 fill-rose-500/20'}`} />
+            </div>
             <p className="text-xs text-slate-400">@{selectedProfileUser.username}</p>
 
             {isBuddy(selectedProfileUser.id) ? (
-              <div className="mt-2.5 w-full p-2.5 rounded-2xl bg-pink-50/70 border border-pink-200/80 text-left space-y-1">
+              <div className={`mt-2.5 w-full p-2.5 rounded-2xl border text-left space-y-1 ${
+                isMidnight ? 'bg-slate-900/80 border-slate-800 text-slate-300' : 'bg-pink-50/70 border-pink-200/80'
+              }`}>
                 <div className="flex items-center justify-between gap-2 min-w-0">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Email</span>
-                  <span className="text-xs font-semibold text-slate-700 truncate">{selectedProfileUser.email}</span>
+                  <span className={`text-xs font-semibold truncate ${isMidnight ? 'text-slate-200' : 'text-slate-700'}`}>{selectedProfileUser.email}</span>
                 </div>
                 <div className="flex items-center justify-between gap-2 min-w-0">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">User ID</span>
-                  <code className="text-xs font-mono font-bold text-rose-700 truncate">{selectedProfileUser.id}</code>
+                  <code className={`text-xs font-mono font-bold truncate ${isMidnight ? 'text-cyan-400' : 'text-rose-700'}`}>{selectedProfileUser.id}</code>
                 </div>
               </div>
             ) : (
-              <div className="mt-2 text-center text-[11px] text-slate-400 italic bg-slate-50 p-2 rounded-xl border border-slate-100 w-full">
+              <div className={`mt-2 text-center text-[11px] italic p-2 rounded-xl border w-full ${
+                isMidnight ? 'bg-slate-900/60 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-100 text-slate-400'
+              }`}>
                 Email & User ID hidden (Add buddy to view)
               </div>
             )}
 
             {isAllowed ? (
               <>
-                <p className="mt-2 text-xs text-slate-600 bg-pink-50/60 p-2.5 rounded-2xl border border-pink-100/80 max-w-xs">
+                <p className={`mt-2.5 text-xs p-2.5 rounded-2xl border max-w-xs leading-relaxed ${
+                  isMidnight ? 'bg-slate-900/70 border-slate-800 text-slate-300' : 'bg-pink-50/60 border-pink-100/80 text-slate-600'
+                }`}>
                   "{selectedProfileUser.bio || 'Available to chat'}"
                 </p>
+
+                <div className="flex items-center justify-center gap-3 text-[11px] text-slate-400 mt-2 flex-wrap">
+                  {selectedProfileUser.location && (
+                    <span>📍 {selectedProfileUser.location}</span>
+                  )}
+                  {selectedProfileUser.joinedDate && (
+                    <span>📅 {selectedProfileUser.joinedDate}</span>
+                  )}
+                </div>
+
                 {selectedProfileUser.badge && (
-                  <span className="mt-2 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-pink-100 text-pink-700">
+                  <span className={`mt-2 text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                    isMidnight ? 'bg-blue-950 text-cyan-400 border border-cyan-800/40' : 'bg-pink-100 text-pink-700'
+                  }`}>
                     {selectedProfileUser.badge}
                   </span>
                 )}
