@@ -457,7 +457,7 @@ export const FriendsView: React.FC = () => {
                         isMidnight ? 'text-blue-400' : 'text-rose-500'
                       }`}
                     >
-                      {user.moodEmoji} {user.moodText || 'Smiling'}
+                      {user.moodEmoji} {user.moodText && user.moodText.toLowerCase() !== 'active now' ? user.moodText : (presence.isOnline ? 'Active now' : 'Available')}
                     </p>
                   </div>
                 </div>

@@ -513,38 +513,15 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [currentUser?.id, currentUser?.showActiveStatus]);
 
-  // Listen to real-time rooms
+  // Listen to real-time rooms (Group spaces & Direct chats combined safely)
   useEffect(() => {
     if (!currentUser?.id) return;
     const currentUserId = currentUser.id;
 
-    const roomsQuery = query(
-      collection(db, 'rooms'),
-      or(
-        where('type', '==', 'group'),
-        where('participantIds', 'array-contains', currentUserId)
-      )
-    );
-    const unsub = onSnapshot(roomsQuery, (snapshot) => {
-      const fetched: ChatRoom[] = [];
-      snapshot.forEach((d) => {
-        const roomData = d.data() as ChatRoom;
-        const isParticipant =
-          !roomData.participantIds ||
-          roomData.participantIds.length === 0 ||
-          roomData.participantIds.includes(currentUserId) ||
-          roomData.createdBy === currentUserId;
+    const roomsMap = new Map<string, ChatRoom>();
 
-        if (isParticipant) {
-          fetched.push({
-            ...roomData,
-            id: d.id,
-            type: roomData.type || (roomData.isDirect ? 'direct' : 'group'),
-            participantIds: roomData.participantIds || [],
-          });
-        }
-      });
-
+    const updateCombinedRooms = () => {
+      const fetched = Array.from(roomsMap.values());
       fetched.sort((a, b) => (b.lastMessageTime || b.createdAt || 0) - (a.lastMessageTime || a.createdAt || 0));
       setRawRooms(fetched);
 
@@ -558,12 +535,72 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       setIsConnected(true);
+    };
+
+    // 1. Group rooms listener (all public group spaces)
+    const qGroup = query(collection(db, 'rooms'), where('type', '==', 'group'));
+    const unsubGroup = onSnapshot(qGroup, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'removed') {
+          roomsMap.delete(change.doc.id);
+        } else {
+          const roomData = change.doc.data() as ChatRoom;
+          roomsMap.set(change.doc.id, {
+            ...roomData,
+            id: change.doc.id,
+            type: 'group',
+            participantIds: roomData.participantIds || [],
+          });
+        }
+      });
+      updateCombinedRooms();
     }, (err) => {
-      console.warn('Room listener issue:', err);
-      setIsConnected(false);
+      console.warn('Group room listener issue:', err);
     });
 
-    return () => unsub();
+    // 2. Direct rooms listener (chats where current user is a participant)
+    const qDirect = query(collection(db, 'rooms'), where('participantIds', 'array-contains', currentUserId));
+    const unsubDirect = onSnapshot(qDirect, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'removed') {
+          roomsMap.delete(change.doc.id);
+        } else {
+          const roomData = change.doc.data() as ChatRoom;
+          roomsMap.set(change.doc.id, {
+            ...roomData,
+            id: change.doc.id,
+            type: roomData.type || (roomData.isDirect ? 'direct' : 'group'),
+            participantIds: roomData.participantIds || [],
+          });
+        }
+      });
+      updateCombinedRooms();
+    }, (err) => {
+      console.warn('Direct room listener issue:', err);
+    });
+
+    // 3. Ensure default 'general' lounge room exists
+    const generalDocRef = doc(db, 'rooms', 'general');
+    getDoc(generalDocRef).then((snap) => {
+      if (!snap.exists()) {
+        setDoc(generalDocRef, {
+          id: 'general',
+          name: 'General Lounge',
+          description: 'Welcome to Simi! A cozy place to chat and make friends 🌸',
+          icon: '🌸',
+          type: 'group',
+          isDirect: false,
+          createdBy: 'system',
+          participantIds: [],
+          createdAt: Date.now(),
+        }).catch(() => {});
+      }
+    }).catch(() => {});
+
+    return () => {
+      unsubGroup();
+      unsubDirect();
+    };
   }, [currentUser?.id]);
 
   // Real-time Stories Listener (24-hour disappearing stories)
@@ -697,27 +734,17 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const currentUserId = currentUser.id;
 
     const callsCol = collection(db, 'calls');
-    const qCalls = query(
-      callsCol,
-      or(
-        where('receiverId', '==', currentUserId),
-        where('callerId', '==', currentUserId)
-      ),
-      orderBy('createdAt', 'desc'),
-      limit(10)
-    );
+    const callsMap = new Map<string, CallSession>();
 
-    const unsub = onSnapshot(qCalls, (snapshot) => {
-      let activeFound: CallSession | null = null;
-      snapshot.forEach((d) => {
-        const call = { ...(d.data() as CallSession), id: d.id };
-        if (
+    const updateCallsState = () => {
+      const allCalls = Array.from(callsMap.values());
+      allCalls.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+      const activeFound = allCalls.find(
+        (call) =>
           (call.receiverId === currentUserId || call.callerId === currentUserId) &&
           (call.status === 'calling' || call.status === 'connected')
-        ) {
-          if (!activeFound) activeFound = call;
-        }
-      });
+      ) || null;
 
       setActiveCall((prev) => {
         // If incoming call received from a buddy, trigger push notification
@@ -732,11 +759,40 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         return activeFound;
       });
+    };
+
+    const qRecv = query(callsCol, where('receiverId', '==', currentUserId));
+    const unsubRecv = onSnapshot(qRecv, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'removed') {
+          callsMap.delete(change.doc.id);
+        } else {
+          callsMap.set(change.doc.id, { ...(change.doc.data() as CallSession), id: change.doc.id });
+        }
+      });
+      updateCallsState();
     }, (err) => {
-      console.warn('Calls listener note:', err);
+      console.warn('Incoming calls listener note:', err);
     });
 
-    return () => unsub();
+    const qCaller = query(callsCol, where('callerId', '==', currentUserId));
+    const unsubCaller = onSnapshot(qCaller, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'removed') {
+          callsMap.delete(change.doc.id);
+        } else {
+          callsMap.set(change.doc.id, { ...(change.doc.data() as CallSession), id: change.doc.id });
+        }
+      });
+      updateCallsState();
+    }, (err) => {
+      console.warn('Outgoing calls listener note:', err);
+    });
+
+    return () => {
+      unsubRecv();
+      unsubCaller();
+    };
   }, [currentUser?.id]);
 
   // WebRTC Call Initiation (Caller)
@@ -1082,7 +1138,14 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         list.push({ ...u, id: d.id, buddyIds: u.buddyIds || [] });
       });
 
-      if (!list.some((u) => u.id === currentUserId) && currentUserRef.current) {
+      const myProfileInList = list.find((u) => u.id === currentUserId);
+      if (myProfileInList) {
+        setCurrentUser((prev) => {
+          if (!prev) return myProfileInList;
+          const mergedBuddies = Array.from(new Set([...(prev.buddyIds || []), ...(myProfileInList.buddyIds || [])]));
+          return { ...prev, ...myProfileInList, buddyIds: mergedBuddies };
+        });
+      } else if (currentUserRef.current) {
         list.push(currentUserRef.current);
       }
       setActiveUsers(list);
@@ -1422,6 +1485,27 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const otherList = prev.filter((r) => r.fromUserId !== currentUserId);
         return [...otherList, ...fromList];
       });
+
+      // When the recipient accepts our request, immediately update our own buddyIds!
+      fromList.forEach((req) => {
+        if (req.status === 'accepted' && req.toUserId) {
+          const user = currentUserRef.current;
+          if (user && !(user.buddyIds || []).includes(req.toUserId)) {
+            setCurrentUser((prev) =>
+              prev ? { ...prev, buddyIds: Array.from(new Set([...(prev.buddyIds || []), req.toUserId])) } : null
+            );
+            updateDoc(doc(db, 'users', currentUserId), {
+              buddyIds: arrayUnion(req.toUserId),
+            }).catch(() => {});
+            sounds.playReceive();
+            confetti({
+              particleCount: 40,
+              spread: 50,
+              origin: { y: 0.7 },
+            });
+          }
+        }
+      });
     }, (err) => {
       console.warn('Buddy requests from listener note:', err);
     });
@@ -1489,10 +1573,16 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return 'BLOCKED_BY_OTHER';
       }
 
-      // 2. Mutual buddy (both must have each other in buddyIds)
+      // 2. Mutual buddy (either user has target in buddyIds, or an accepted request exists between them)
       const userHasTarget = (user.buddyIds || []).includes(targetUserId);
-      const targetHasUser = targetUser ? (targetUser.buddyIds || []).includes(user.id) : userHasTarget;
-      if (userHasTarget && targetHasUser) {
+      const targetHasUser = targetUser ? (targetUser.buddyIds || []).includes(user.id) : false;
+      const hasAcceptedRequest = buddyRequests.some(
+        (r) =>
+          r.status === 'accepted' &&
+          ((r.fromUserId === user.id && r.toUserId === targetUserId) ||
+            (r.fromUserId === targetUserId && r.toUserId === user.id))
+      );
+      if (userHasTarget || targetHasUser || hasAcceptedRequest) {
         return 'FRIENDS';
       }
 
@@ -1535,12 +1625,18 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const fromUserId =
         fromUserIdParam ||
         (requestIdOrFromUserId.includes('_') ? requestIdOrFromUserId.split('_')[0] : requestIdOrFromUserId);
-      const docId = `${fromUserId}_${user.id}`;
-      const altDocId = `${user.id}_${fromUserId}`;
+      const requestId = requestIdOrFromUserId.includes('_')
+        ? requestIdOrFromUserId
+        : `${fromUserId}_${user.id}`;
+      const altRequestId = `${user.id}_${fromUserId}`;
 
       // Optimistically update local state immediately
       setBuddyRequests((prev) =>
-        prev.filter((r) => r.id !== docId && r.id !== altDocId && r.id !== requestIdOrFromUserId)
+        prev.map((r) =>
+          r.id === requestId || r.id === altRequestId || (r.fromUserId === fromUserId && r.toUserId === user.id)
+            ? { ...r, status: 'accepted' }
+            : r
+        )
       );
       setCurrentUser((prev) =>
         prev ? { ...prev, buddyIds: Array.from(new Set([...(prev.buddyIds || []), fromUserId])) } : null
@@ -1554,18 +1650,31 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       );
 
       try {
-        // Atomic batch update for mutual friendship
-        const batch = writeBatch(db);
-        batch.update(doc(db, 'users', user.id), {
+        // 1. Update own user document
+        await updateDoc(doc(db, 'users', user.id), {
           buddyIds: arrayUnion(fromUserId),
         });
-        batch.update(doc(db, 'users', fromUserId), {
-          buddyIds: arrayUnion(user.id),
-        });
-        batch.delete(doc(db, 'buddyRequests', docId));
-        batch.delete(doc(db, 'buddyRequests', altDocId));
-        batch.delete(doc(db, 'buddyRequests', requestIdOrFromUserId));
-        await batch.commit();
+
+        // 2. Update fromUser document if permissions allow
+        try {
+          await updateDoc(doc(db, 'users', fromUserId), {
+            buddyIds: arrayUnion(user.id),
+          });
+        } catch {
+          // Ignored if security rules restrict writing to other user documents
+        }
+
+        // 3. Mark the buddy request as accepted so fromUser's client syncs immediately!
+        const reqRef = doc(db, 'buddyRequests', requestId);
+        await setDoc(reqRef, {
+          status: 'accepted',
+          updatedAt: Date.now(),
+        }, { merge: true });
+
+        if (requestId !== altRequestId) {
+          const altRef = doc(db, 'buddyRequests', altRequestId);
+          setDoc(altRef, { status: 'accepted', updatedAt: Date.now() }, { merge: true }).catch(() => {});
+        }
 
         confetti({
           particleCount: 40,
@@ -1893,16 +2002,18 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       );
 
       try {
-        const batch = writeBatch(db);
-        batch.update(doc(db, 'users', user.id), {
+        await updateDoc(doc(db, 'users', user.id), {
           buddyIds: arrayRemove(targetUserId),
         });
-        batch.update(doc(db, 'users', targetUserId), {
-          buddyIds: arrayRemove(user.id),
-        });
-        batch.delete(doc(db, 'buddyRequests', `${user.id}_${targetUserId}`));
-        batch.delete(doc(db, 'buddyRequests', `${targetUserId}_${user.id}`));
-        await batch.commit();
+        try {
+          await updateDoc(doc(db, 'users', targetUserId), {
+            buddyIds: arrayRemove(user.id),
+          });
+        } catch {
+          // Ignored if target user doc is owner-restricted
+        }
+        deleteDoc(doc(db, 'buddyRequests', `${user.id}_${targetUserId}`)).catch(() => {});
+        deleteDoc(doc(db, 'buddyRequests', `${targetUserId}_${user.id}`)).catch(() => {});
       } catch (e) {
         console.error('Failed to remove buddy:', e);
       }
@@ -1952,11 +2063,17 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         createdAt: Date.now(),
       };
 
+      // Optimistically ensure room is immediately in rawRooms
+      setRawRooms((prev) => {
+        if (prev.some((r) => r.id === dmId)) return prev;
+        return [dmRoom, ...prev];
+      });
+      setCurrentRoomId(dmId);
+      setActiveMobileTab('chats');
+
       try {
         const roomDocRef = doc(db, 'rooms', dmId);
         await setDoc(roomDocRef, cleanForFirestore(dmRoom), { merge: true });
-        setCurrentRoomId(dmId);
-        setActiveMobileTab('chats');
       } catch (err) {
         console.error('Failed to initiate DM:', err);
       }
@@ -2137,20 +2254,24 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await setDoc(msgDocRef, firestoreMsg);
 
         const roomDocRef = doc(db, 'rooms', currentRoomId);
-        await updateDoc(roomDocRef, {
-          lastMessage: type === 'sticker' ? '🎨 Sticker' : type === 'voice' ? '🎙️ Voice note' : content.slice(0, 35),
-          lastMessageTime: Date.now(),
-        }).catch(() => {
-          setDoc(roomDocRef, {
-            id: currentRoomId,
-            name: currentRoomId,
-            icon: '💬',
-            type: 'group',
-            participantIds: [user.id],
-            lastMessage: content.slice(0, 35),
+        const isDm = currentRoomId.startsWith('dm_');
+        const dmParticipants = isDm
+          ? currentRoomId.replace('dm_', '').split('_')
+          : (currentRoom?.participantIds || [user.id]);
+
+        await setDoc(
+          roomDocRef,
+          {
+            lastMessage: type === 'sticker' ? '🎨 Sticker' : type === 'voice' ? '🎙️ Voice note' : content.slice(0, 35),
             lastMessageTime: Date.now(),
-          }, { merge: true });
-        });
+            ...(isDm
+              ? { type: 'direct', isDirect: true, participantIds: dmParticipants }
+              : currentRoom
+              ? {}
+              : { type: 'group', participantIds: [user.id] }),
+          },
+          { merge: true }
+        );
       } catch (err) {
         console.error('Failed to post message to Firestore:', err);
       }
@@ -2266,10 +2387,23 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentUser(profile);
   };
 
-  const rooms: ChatRoom[] = rawRooms.map((room) => ({
-    ...room,
-    unreadCount: roomUnreadCounts[room.id] || 0,
-  }));
+  const rooms: ChatRoom[] = rawRooms.map((room) => {
+    let displayName = room.name;
+    if (room.type === 'direct' || room.isDirect) {
+      const otherId = room.participantIds?.find((id) => id !== currentUser?.id);
+      if (otherId) {
+        const otherUser = activeUsers.find((u) => u.id === otherId);
+        if (otherUser) {
+          displayName = otherUser.name;
+        }
+      }
+    }
+    return {
+      ...room,
+      name: displayName,
+      unreadCount: roomUnreadCounts[room.id] || 0,
+    };
+  });
 
   const currentRoom = rooms.find((r) => r.id === currentRoomId);
   const pinnedMessages = messages.filter((m) => m.isPinned);

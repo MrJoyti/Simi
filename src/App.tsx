@@ -23,7 +23,6 @@ import { MobileChannelsList } from './components/MobileChannelsList';
 import { VerseView } from './components/VerseView';
 import { AuthModal } from './components/AuthModal';
 import { ConversationInfoDrawer } from './components/ConversationInfoDrawer';
-import { AppUpdateModal } from './components/AppUpdateModal';
 import { THEMES } from './utils/theme';
 
 const ChatInterface: React.FC = () => {
@@ -171,7 +170,6 @@ export default function App() {
   return (
     <ChatProvider>
       <ChatInterface />
-      <AppUpdateModal />
     </ChatProvider>
   );
 }

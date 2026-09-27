@@ -47,7 +47,7 @@ export function canViewerAccessUserContent(
   if ((viewerUser.blockedUserIds || []).includes(targetUser.id)) return false;
   if ((targetUser.blockedUserIds || []).includes(viewerUser.id)) return false;
 
-  const visibility: PrivacyVisibility = targetUser.privacyVisibility || 'buddies';
+  const visibility: PrivacyVisibility = targetUser.privacyVisibility || 'public';
 
   if (visibility === 'only_me') {
     return false;
