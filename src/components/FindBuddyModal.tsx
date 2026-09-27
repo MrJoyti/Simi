@@ -14,6 +14,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { sounds } from '../utils/sound';
+import { getUserPresence } from '../utils/presence';
 
 export const FindBuddyModal: React.FC = () => {
   const {
@@ -29,6 +30,7 @@ export const FindBuddyModal: React.FC = () => {
     buddyRequests,
     startDirectMessage,
     activeUsers,
+    isOnline,
     theme,
   } = useChat();
 
@@ -122,6 +124,59 @@ export const FindBuddyModal: React.FC = () => {
           </button>
         </div>
 
+        {/* Incoming Buddy Requests Section */}
+        {buddyRequests.filter((r) => r.toUserId === currentUser?.id && r.status === 'pending').length > 0 && (
+          <div className={`mt-4 p-3.5 rounded-2xl border space-y-2.5 ${
+            isMidnight ? 'bg-emerald-950/40 border-emerald-800/60' : 'bg-emerald-50 border-emerald-200'
+          }`}>
+            <span className={`text-[11px] font-bold uppercase tracking-wider block ${
+              isMidnight ? 'text-emerald-400' : 'text-emerald-700'
+            }`}>
+              Incoming Buddy Requests ({buddyRequests.filter((r) => r.toUserId === currentUser?.id && r.status === 'pending').length})
+            </span>
+            <div className="space-y-2">
+              {buddyRequests
+                .filter((r) => r.toUserId === currentUser?.id && r.status === 'pending')
+                .map((req) => (
+                  <div
+                    key={req.id}
+                    className={`flex items-center justify-between p-2.5 rounded-xl border transition-all ${
+                      isMidnight ? 'bg-slate-900/90 border-slate-800 text-slate-100' : 'bg-white border-emerald-100 text-slate-800 shadow-2xs'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <CuteAvatar id={req.fromUserAvatar || 'bunny'} size="sm" />
+                      <div className="min-w-0">
+                        <span className="text-xs font-bold truncate block">{req.fromUserName}</span>
+                        <span className="text-[10px] text-slate-400 block truncate">Sent you a friend request</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={() => {
+                          sounds.playSend();
+                          acceptBuddyRequest(req.id, req.fromUserId);
+                        }}
+                        className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl shadow-2xs transition-transform active:scale-95"
+                      >
+                        Accept
+                      </button>
+                      <button
+                        onClick={() => {
+                          sounds.playClick();
+                          declineBuddyRequest(req.fromUserId);
+                        }}
+                        className="px-2.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-xl transition-colors"
+                      >
+                        Decline
+                      </button>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
+
         {/* Search Input Form */}
         <form onSubmit={handleSearch} className="mt-4">
           <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${isMidnight ? 'text-slate-300' : 'text-slate-700'}`}>
@@ -162,7 +217,9 @@ export const FindBuddyModal: React.FC = () => {
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="relative">
                     <CuteAvatar id={foundUser.avatarId} customUrl={foundUser.customAvatarUrl} size="md" />
-                    <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 border-2 border-slate-900 rounded-full" />
+                    {getUserPresence(foundUser, false, isOnline, currentUser, activeUsers).isOnline && (
+                      <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white ring-1 ring-emerald-300 rounded-full animate-pulse" />
+                    )}
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5">

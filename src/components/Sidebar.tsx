@@ -41,6 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
     isOnline,
     isRoomPinned,
     isRoomFavorite,
+    buddyRequests,
   } = useChat();
 
   const [filterQuery, setFilterQuery] = useState('');
@@ -119,14 +120,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
             sounds.playClick();
             setShowFindBuddyModal(true);
           }}
-          className={`w-full flex items-center justify-center gap-2 py-2 px-3 font-bold text-xs rounded-2xl border shadow-2xs transition-all active:scale-98 ${
+          className={`w-full flex items-center justify-between py-2 px-3 font-bold text-xs rounded-2xl border shadow-2xs transition-all active:scale-98 ${
             isMidnight
               ? 'bg-slate-800/80 hover:bg-slate-800 text-blue-400 border-slate-700/70'
               : 'bg-pink-50 hover:bg-pink-100/70 text-rose-700 border-pink-200/60'
           }`}
         >
-          <UserPlus className={`w-4 h-4 ${isMidnight ? 'text-blue-400' : 'text-pink-500'}`} />
-          <span>Find & Add Buddy by ID</span>
+          <div className="flex items-center gap-2 min-w-0">
+            <UserPlus className={`w-4 h-4 shrink-0 ${isMidnight ? 'text-blue-400' : 'text-pink-500'}`} />
+            <span className="truncate">Find & Add Buddy</span>
+          </div>
+          {buddyRequests.filter((r) => r.toUserId === currentUser?.id && r.status === 'pending').length > 0 && (
+            <span className="px-2 py-0.5 text-[10px] font-bold text-white bg-rose-500 rounded-full animate-pulse shrink-0">
+              {buddyRequests.filter((r) => r.toUserId === currentUser?.id && r.status === 'pending').length} new
+            </span>
+          )}
         </button>
       </div>
 

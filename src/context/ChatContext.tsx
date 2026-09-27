@@ -44,6 +44,7 @@ import {
   writeBatch,
   arrayUnion,
   arrayRemove,
+  getDocs,
   serverTimestamp,
 } from 'firebase/firestore';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
@@ -1423,8 +1424,28 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
           u.email.toLowerCase() === cleanQ ||
           u.name.toLowerCase() === cleanQ
       );
+      if (found) return found;
 
-      return found || null;
+      // Query Firestore directly for username or email
+      try {
+        const qUsername = query(collection(db, 'users'), where('username', '==', cleanQ), limit(1));
+        const usernameSnap = await getDocs(qUsername);
+        if (!usernameSnap.empty) {
+          const docSnap = usernameSnap.docs[0];
+          return { ...(docSnap.data() as UserProfile), id: docSnap.id };
+        }
+
+        const qEmail = query(collection(db, 'users'), where('email', '==', cleanQ), limit(1));
+        const emailSnap = await getDocs(qEmail);
+        if (!emailSnap.empty) {
+          const docSnap = emailSnap.docs[0];
+          return { ...(docSnap.data() as UserProfile), id: docSnap.id };
+        }
+      } catch {
+        // proceed
+      }
+
+      return null;
     },
     [activeUsers]
   );

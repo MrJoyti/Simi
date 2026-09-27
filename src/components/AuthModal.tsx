@@ -116,7 +116,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       gender: genderChoice,
       emailVerified: isEmailVerified,
       avatarId: isMale ? 'wolf' : avatarId,
-      customAvatarUrl: customPhotoUrl,
+      ...(customPhotoUrl ? { customAvatarUrl: customPhotoUrl } : {}),
       bio: isMale ? 'Live on MochiChat ⚡' : 'Happy sweetie chatting live on MochiChat 🌸',
       moodEmoji: isMale ? '⚡' : '🌸',
       moodText: 'Available',
@@ -132,9 +132,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       lastSeen: Date.now(),
     };
 
+    // Remove any undefined properties before writing to Firestore
+    const cleanedData = Object.fromEntries(
+      Object.entries(userProfile).filter(([_, v]) => v !== undefined)
+    );
+
     // Store in Firestore users collection
     const userDocRef = doc(db, 'users', targetUid);
-    await setDoc(userDocRef, userProfile, { merge: true });
+    await setDoc(userDocRef, cleanedData, { merge: true });
 
     // Store in localStorage for instant persistent session
     try {

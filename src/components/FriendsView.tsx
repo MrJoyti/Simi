@@ -452,13 +452,15 @@ export const FriendsView: React.FC = () => {
                         🔒 ID & Email hidden (Add buddy to view)
                       </p>
                     )}
-                    <p
-                      className={`text-[11px] font-medium truncate mt-0.5 ${
-                        isMidnight ? 'text-blue-400' : 'text-rose-500'
-                      }`}
-                    >
-                      {user.moodEmoji} {user.moodText && user.moodText.toLowerCase() !== 'active now' ? user.moodText : (presence.isOnline ? 'Active now' : 'Available')}
-                    </p>
+                    {user.moodText && !['active now', 'available'].includes(user.moodText.toLowerCase().trim()) && (
+                      <p
+                        className={`text-[11px] font-medium truncate mt-0.5 ${
+                          isMidnight ? 'text-blue-400' : 'text-rose-500'
+                        }`}
+                      >
+                        {user.moodEmoji || '✨'} {user.moodText}
+                      </p>
+                    )}
                   </div>
                 </div>
 
