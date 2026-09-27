@@ -103,10 +103,9 @@ export const VerseView: React.FC = () => {
             ? 'from-amber-400 via-orange-300 to-rose-300'
             : 'from-pink-500 via-rose-400 to-amber-300';
 
-        const defaultMood = buddy.gender === 'male' ? '⚡' : '🌸';
         const storyText = buddy.moodText
-          ? `${buddy.moodEmoji || defaultMood} ${buddy.moodText}`
-          : `${defaultMood} Active on Simi Verse today ✨`;
+          ? buddy.moodText
+          : 'Active on Simi today';
 
         storiesMap[buddy.id] = [
           {
@@ -365,8 +364,8 @@ export const VerseView: React.FC = () => {
               <div className={`p-8 text-center rounded-3xl border ${
                 isMidnight ? 'bg-[#111821] border-slate-800 text-slate-300' : 'bg-white border-pink-100 text-slate-700'
               }`}>
-                <div className="w-12 h-12 rounded-2xl bg-pink-100/80 text-rose-500 flex items-center justify-center text-xl mx-auto mb-2">
-                  ✨
+                <div className="w-12 h-12 rounded-2xl bg-pink-100/80 text-rose-500 flex items-center justify-center mx-auto mb-2">
+                  <Sparkles className="w-6 h-6" />
                 </div>
                 <h4 className="text-xs font-bold">Your Verse is quiet</h4>
                 <p className="text-[11px] text-slate-400 mt-0.5">
@@ -400,7 +399,7 @@ export const VerseView: React.FC = () => {
                       <div className="relative shrink-0">
                         <CuteAvatar id={buddy.avatarId} customUrl={buddy.customAvatarUrl} size="md" />
                         {presence.isOnline && (
-                          <span className="absolute -top-0.5 -left-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white animate-pulse" />
+                           <span className="absolute -top-0.5 -left-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white animate-pulse" />
                         )}
                       </div>
 
@@ -422,7 +421,7 @@ export const VerseView: React.FC = () => {
                         <p className={`text-[11px] truncate mt-0.5 ${
                           isMidnight ? 'text-blue-400 font-medium' : 'text-rose-500 font-medium'
                         }`}>
-                          {buddy.moodEmoji || '✨'} {buddy.moodText || 'Sharing good vibes'}
+                          {buddy.moodText || 'Available'}
                         </p>
                       </div>
                     </div>

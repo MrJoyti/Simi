@@ -12,6 +12,7 @@ import {
   Check,
   Users,
   Bell,
+  Inbox,
 } from 'lucide-react';
 import { sounds } from '../utils/sound';
 import { getUserPresence } from '../utils/presence';
@@ -79,7 +80,7 @@ export const FriendsView: React.FC = () => {
       {/* Clean Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
-          <span className="text-xl">{isMidnight ? '⚡' : '🌸'}</span>
+          <Users className={`w-5 h-5 ${isMidnight ? 'text-blue-400' : 'text-rose-500'}`} />
           <h2
             className={`text-base font-extrabold tracking-tight ${
               isMidnight ? 'text-slate-100' : 'text-slate-800'
@@ -225,11 +226,11 @@ export const FriendsView: React.FC = () => {
                 }`}
               >
                 <div
-                  className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl mb-2 ${
-                    isMidnight ? 'bg-slate-800 text-blue-400' : 'bg-pink-50'
+                  className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-2 ${
+                    isMidnight ? 'bg-slate-800 text-blue-400' : 'bg-pink-50 text-rose-500'
                   }`}
                 >
-                  📩
+                  <Inbox className="w-6 h-6" />
                 </div>
                 <p className={`text-xs font-semibold ${isMidnight ? 'text-slate-300' : 'text-slate-700'}`}>
                   No pending incoming friend requests
@@ -255,7 +256,7 @@ export const FriendsView: React.FC = () => {
                         <h4 className="text-xs font-bold truncate">{req.fromUserName}</h4>
                         <p className="text-[10px] text-slate-400">Sent you a buddy request</p>
                         <p className="text-[9px] text-slate-400 italic mt-0.5">
-                          🔒 Email & ID hidden until accepted
+                          Email & ID hidden until accepted
                         </p>
                       </div>
                     </div>
@@ -348,11 +349,11 @@ export const FriendsView: React.FC = () => {
           }`}
         >
           <div
-            className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl mb-2 ${
-              isMidnight ? 'bg-slate-800 text-blue-400' : 'bg-pink-50'
+            className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-2 ${
+              isMidnight ? 'bg-slate-800 text-blue-400' : 'bg-pink-50 text-rose-500'
             }`}
           >
-            {isMidnight ? '⚡' : '🧸'}
+            <Users className="w-7 h-7" />
           </div>
           <h3 className={`text-sm font-bold ${isMidnight ? 'text-slate-200' : 'text-slate-800'}`}>
             {filterTab === 'buddies' ? 'No buddies added yet!' : 'No matching users found.'}
@@ -445,11 +446,11 @@ export const FriendsView: React.FC = () => {
                     {added || isSelf ? (
                       <>
                         <p className="text-[10px] text-slate-500 font-mono truncate">ID: {user.id}</p>
-                        <p className="text-[10px] text-slate-500 truncate">📧 {user.email}</p>
+                        <p className="text-[10px] text-slate-500 truncate">{user.email}</p>
                       </>
                     ) : (
                       <p className="text-[10px] text-slate-400 italic truncate">
-                        🔒 ID & Email hidden (Add buddy to view)
+                        ID & Email hidden (Add buddy to view)
                       </p>
                     )}
                     {user.moodText && !['active now', 'available'].includes(user.moodText.toLowerCase().trim()) && (
@@ -458,7 +459,7 @@ export const FriendsView: React.FC = () => {
                           isMidnight ? 'text-blue-400' : 'text-rose-500'
                         }`}
                       >
-                        {user.moodEmoji || '✨'} {user.moodText}
+                        {user.moodText}
                       </p>
                     )}
                   </div>

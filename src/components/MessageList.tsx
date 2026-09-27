@@ -14,10 +14,12 @@ import {
   Download,
   X,
   WifiOff,
+  Search,
+  MessageCircle,
 } from 'lucide-react';
 import { sounds } from '../utils/sound';
 
-const QUICK_REACTIONS = ['🌸', '💖', '✨', '🐾', '🍰', '🍓'];
+const QUICK_REACTIONS = ['👍', '❤️', '🔥', '🎉', '😊', '👏'];
 
 export const MessageList: React.FC = () => {
   const {
@@ -70,11 +72,11 @@ export const MessageList: React.FC = () => {
       senderName: msg.senderName,
       text:
         msg.type === 'sticker'
-          ? '🎨 Sticker'
+          ? 'Sticker'
           : msg.type === 'voice'
-          ? '🎙️ Voice note'
+          ? 'Voice note'
           : msg.type === 'image'
-          ? `📸 ${msg.content || 'Photo'}`
+          ? (msg.content || 'Photo')
           : msg.content,
       type: msg.type,
     });
@@ -131,10 +133,10 @@ export const MessageList: React.FC = () => {
 
       {filteredMessages.length === 0 ? (
         <div className="h-full flex flex-col items-center justify-center text-center p-6 select-none opacity-80">
-          <div className={`w-16 h-16 rounded-3xl flex items-center justify-center text-3xl mb-3 shadow-inner ${
-            isMidnight ? 'bg-slate-800/80 text-blue-400' : 'bg-pink-100/70'
+          <div className={`w-16 h-16 rounded-3xl flex items-center justify-center mb-3 shadow-inner ${
+            isMidnight ? 'bg-slate-800/80 text-blue-400' : 'bg-pink-100/70 text-rose-500'
           }`}>
-            {searchQuery ? '🔍' : currentRoom?.icon || (isMidnight ? '⚡' : '🌸')}
+            {searchQuery ? <Search className="w-8 h-8" /> : <MessageCircle className="w-8 h-8" />}
           </div>
           <h3 className={`text-sm font-bold ${isMidnight ? 'text-slate-200' : 'text-slate-700'}`}>
             {searchQuery ? 'No matching messages found' : 'The chat is peaceful & quiet'}
@@ -282,7 +284,7 @@ export const MessageList: React.FC = () => {
                         />
                       </div>
                       {/* Optional Caption */}
-                      {msg.content && msg.content !== 'Shared a photo 📸' && (
+                      {msg.content && msg.content !== 'Shared a photo' && msg.content !== 'Shared a photo 📸' && (
                         <div
                           className={`px-3.5 py-1.5 rounded-2xl text-xs font-medium leading-relaxed ${
                             isUser

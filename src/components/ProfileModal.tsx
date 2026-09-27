@@ -27,12 +27,12 @@ import { sounds } from '../utils/sound';
 import { canViewProfile } from '../utils/privacy';
 
 const BADGE_OPTIONS = [
-  '🍓 Sweet Soul',
-  '🌸 Cozy Friend',
-  '✨ Kawaii VIP',
-  '🧋 Boba Fanatic',
-  '🐾 Bunny Companion',
-  '🌙 Night Owl',
+  'Verified Member',
+  'Pro Member',
+  'VIP Member',
+  'Community Contributor',
+  'Early Adopter',
+  'Active Member',
 ];
 
 const MOOD_EMOJIS = ['🌸', '✨', '🍓', '🍰', '🧋', '🍵', '🐾', '🎀', '🧸', '💖', '💤', '🥺'];
@@ -127,9 +127,11 @@ export const ProfileModal: React.FC = () => {
                 size="lg"
                 className="ring-4 ring-white shadow-xl"
               />
-              <span className="absolute -bottom-1 -right-1 text-2xl">
-                {selectedProfileUser.moodEmoji || '🌸'}
-              </span>
+              {selectedProfileUser.moodEmoji ? (
+                <span className="absolute -bottom-1 -right-1 text-2xl">
+                  {selectedProfileUser.moodEmoji}
+                </span>
+              ) : null}
             </div>
 
             <h3 className="text-base font-bold text-slate-800">{selectedProfileUser.name}</h3>
@@ -148,14 +150,14 @@ export const ProfileModal: React.FC = () => {
               </div>
             ) : (
               <div className="mt-2 text-center text-[11px] text-slate-400 italic bg-slate-50 p-2 rounded-xl border border-slate-100 w-full">
-                🔒 Email & User ID hidden (Add buddy to view)
+                Email & User ID hidden (Add buddy to view)
               </div>
             )}
 
             {isAllowed ? (
               <>
                 <p className="mt-2 text-xs text-slate-600 bg-pink-50/60 p-2.5 rounded-2xl border border-pink-100/80 max-w-xs">
-                  "{selectedProfileUser.bio || 'Sweet cozy chats'}"
+                  "{selectedProfileUser.bio || 'Available to chat'}"
                 </p>
                 {selectedProfileUser.badge && (
                   <span className="mt-2 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-pink-100 text-pink-700">
@@ -193,7 +195,7 @@ export const ProfileModal: React.FC = () => {
                   className="flex items-center justify-center gap-1.5 py-2.5 px-3 bg-emerald-100 hover:bg-rose-100 text-emerald-800 hover:text-rose-700 border border-emerald-200 hover:border-rose-200 rounded-2xl text-xs font-bold transition-colors"
                 >
                   <UserCheck className="w-4 h-4" />
-                  <span>Buddy ✓</span>
+                  <span>Buddy</span>
                 </button>
               ) : reqState === 'requestSent' ? (
                 <button
@@ -422,7 +424,7 @@ export const ProfileModal: React.FC = () => {
                 </span>
               </div>
               <span className="text-[10px] font-bold text-emerald-700 bg-white border border-pink-200 px-2 py-0.5 rounded-full shrink-0">
-                {currentUser.emailVerified ? 'Verified ✓' : 'Unverified'}
+                {currentUser.emailVerified ? 'Verified' : 'Unverified'}
               </span>
             </div>
           </div>
@@ -631,14 +633,14 @@ export const ProfileModal: React.FC = () => {
               onChange={(e) => setMoodText(e.target.value)}
               maxLength={50}
               className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-pink-300 focus:bg-white transition-all"
-              placeholder="e.g. Sipping peach iced tea 🍑"
+              placeholder="e.g. Focused on work"
             />
           </div>
 
           {/* Bio */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Cute Bio
+              Bio
             </label>
             <textarea
               value={bio}
@@ -967,7 +969,7 @@ export const ProfileModal: React.FC = () => {
                 className="flex items-center gap-1.5 px-5 py-2 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white rounded-2xl text-xs font-bold shadow-md shadow-pink-200 transition-transform active:scale-95 disabled:opacity-50"
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>{savedSuccess ? 'Saved! ✨' : isSaving ? 'Saving...' : 'Save Profile & Theme'}</span>
+                <span>{savedSuccess ? 'Saved!' : isSaving ? 'Saving...' : 'Save Profile & Theme'}</span>
               </button>
             </div>
           </div>

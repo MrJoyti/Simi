@@ -78,10 +78,10 @@ export const FindBuddyModal: React.FC = () => {
           isMidnight ? 'border-slate-800' : 'border-pink-50'
         }`}>
           <div className="flex items-center gap-2.5">
-            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white text-xl shadow-sm ${
+            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-sm ${
               isMidnight ? 'bg-gradient-to-tr from-blue-600 to-cyan-500' : 'bg-gradient-to-tr from-pink-400 to-rose-400'
             }`}>
-              🔍
+              <Search className="w-5 h-5 text-white" />
             </div>
             <div>
               <h2 className={`text-base font-bold tracking-tight ${isMidnight ? 'text-slate-100' : 'text-slate-800'}`}>
@@ -236,10 +236,10 @@ export const FindBuddyModal: React.FC = () => {
                     {getBuddyRequestState(foundUser.id) === 'buddy' || foundUser.id === currentUser.id ? (
                       <>
                         <p className="text-[10px] text-slate-500 font-mono truncate">ID: {foundUser.id}</p>
-                        <p className="text-[10px] text-slate-500 truncate">📧 {foundUser.email}</p>
+                        <p className="text-[10px] text-slate-500 truncate">{foundUser.email}</p>
                       </>
                     ) : (
-                      <p className="text-[10px] text-slate-400 italic truncate">🔒 ID & Email hidden (Buddies only)</p>
+                      <p className="text-[10px] text-slate-400 italic truncate">ID & Email hidden (Buddies only)</p>
                     )}
                   </div>
                 </div>
@@ -260,7 +260,7 @@ export const FindBuddyModal: React.FC = () => {
                     </button>
 
                     {getBuddyRequestState(foundUser.id) === 'buddy' ? (
-                      <span className="px-2.5 py-1 text-xs font-bold text-emerald-600 bg-emerald-50 rounded-xl border border-emerald-200">Buddy ✓</span>
+                      <span className="px-2.5 py-1 text-xs font-bold text-emerald-600 bg-emerald-50 rounded-xl border border-emerald-200">Buddy</span>
                     ) : getBuddyRequestState(foundUser.id) === 'requestSent' ? (
                       <button
                         onClick={() => cancelBuddyRequest(foundUser.id)}
@@ -336,7 +336,7 @@ export const FindBuddyModal: React.FC = () => {
                           {user.name}
                         </span>
                         <span className="text-[10px] text-slate-400 truncate block">
-                          @{user.username} · {reqState === 'buddy' ? `ID: ${user.id.slice(0, 10)}...` : '🔒 ID & Email hidden'}
+                          @{user.username} · {reqState === 'buddy' ? `ID: ${user.id.slice(0, 10)}...` : 'ID & Email hidden'}
                         </span>
                       </div>
                     </div>
@@ -356,7 +356,7 @@ export const FindBuddyModal: React.FC = () => {
                       </button>
 
                       {reqState === 'buddy' ? (
-                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg">Buddy ✓</span>
+                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg">Buddy</span>
                       ) : reqState === 'requestSent' ? (
                         <button
                           onClick={() => cancelBuddyRequest(user.id)}

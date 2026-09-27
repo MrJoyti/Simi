@@ -129,9 +129,11 @@ export const ProfileView: React.FC = () => {
                 size="lg"
                 className={isMidnight ? 'ring-4 ring-[#111821] shadow-xl' : 'ring-4 ring-white shadow-xl'}
               />
-              <span className="absolute -bottom-1 -right-1 text-2xl">
-                {currentUser.moodEmoji || (isMidnight ? '⚡' : '🌸')}
-              </span>
+              {currentUser.moodEmoji ? (
+                <span className="absolute -bottom-1 -right-1 text-2xl">
+                  {currentUser.moodEmoji}
+                </span>
+              ) : null}
               {currentUser.showActiveStatus !== false && (
                 <span
                   className="absolute -top-1 -left-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white ring-2 ring-emerald-300 animate-pulse shadow-md z-10"
@@ -152,7 +154,7 @@ export const ProfileView: React.FC = () => {
                   ? 'bg-blue-950 text-blue-300 border border-blue-800' 
                   : 'bg-pink-100 text-pink-700'
               }`}>
-                Gender: {currentUser.gender === 'male' ? 'Male ♂' : 'Female ♀'}
+                Gender: {currentUser.gender === 'male' ? 'Male' : 'Female'}
               </span>
             </div>
 
@@ -201,7 +203,7 @@ export const ProfileView: React.FC = () => {
               </span>
             </div>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 shrink-0">
-              {currentUser.emailVerified ? 'Verified ✓' : 'Unverified'}
+              {currentUser.emailVerified ? 'Verified' : 'Unverified'}
             </span>
           </div>
 

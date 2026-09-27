@@ -277,7 +277,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         spread: 50,
         origin: { y: 0.6 },
       });
-      showPushNotification('Simi Notifications Active 🌸', {
+      showPushNotification('Simi Notifications Active', {
         body: 'You will now receive notifications when friends message or call you!',
       });
     }
@@ -573,8 +573,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setDoc(generalDocRef, {
           id: 'general',
           name: 'General Lounge',
-          description: 'Welcome to Simi! A cozy place to chat and make friends 🌸',
-          icon: '🌸',
+          description: 'Welcome to Simi! A clean and secure space to connect.',
+          icon: '💬',
           type: 'group',
           isDirect: false,
           createdBy: 'system',
@@ -689,11 +689,11 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const roomDocRef = doc(db, 'rooms', msg.roomId);
             const previewText =
               msg.type === 'sticker'
-                ? '🎨 Sticker'
+                ? 'Sticker'
                 : msg.type === 'voice'
-                ? '🎙️ Voice note'
+                ? 'Voice note'
                 : msg.type === 'image'
-                ? '📷 Photo'
+                ? 'Photo'
                 : msg.content.slice(0, 35);
 
             await updateDoc(roomDocRef, {
@@ -738,7 +738,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (activeFound && (!prev || prev.id !== activeFound.id)) {
           if (activeFound.receiverId === currentUserId && activeFound.status === 'calling') {
             const isVideo = activeFound.callType !== 'audio';
-            showPushNotification(`Incoming ${isVideo ? 'Video' : 'Audio'} Call from ${activeFound.callerName} ${isVideo ? '📹' : '📞'}`, {
+            showPushNotification(`Incoming ${isVideo ? 'Video' : 'Audio'} Call from ${activeFound.callerName}`, {
               body: 'Tap to open Simi and answer the call!',
               tag: `call-${activeFound.id}`,
             });
@@ -1239,14 +1239,14 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const latest: ChatMessage = incomingMsg;
         const msgPreview =
           latest.type === 'image'
-            ? '📸 Sent an image'
+            ? 'Sent an image'
             : latest.type === 'voice'
-            ? '🎙️ Sent a voice note'
+            ? 'Sent a voice note'
             : latest.type === 'sticker'
-            ? '🎨 Sent a sticker'
+            ? 'Sent a sticker'
             : latest.content;
 
-        showPushNotification(`${latest.senderName} on Simi 🌸`, {
+        showPushNotification(`${latest.senderName} on Simi`, {
           body: msgPreview,
           tag: `msg-${latest.id}`,
         });
@@ -1549,7 +1549,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Play notification sound
             sounds.playReceive();
             // Show push notification
-            showPushNotification('New Buddy Request 🌸', {
+            showPushNotification('New Buddy Request', {
               body: `${req.fromUserName} sent you a buddy request!`,
               tag: `buddy-req-${req.id}`,
             });
@@ -2155,8 +2155,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const newRoom: ChatRoom = {
         id: roomId,
         name: name.trim(),
-        description: description.trim() || 'A cozy group space for friends 🌸',
-        icon: icon || '🌸',
+        description: description.trim() || 'Group conversation',
+        icon: icon || '💬',
         type: 'group',
         isDirect: false,
         createdBy: user.id,
@@ -2322,7 +2322,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await setDoc(
           roomDocRef,
           {
-            lastMessage: type === 'sticker' ? '🎨 Sticker' : type === 'voice' ? '🎙️ Voice note' : content.slice(0, 35),
+            lastMessage: type === 'sticker' ? 'Sticker' : type === 'voice' ? 'Voice note' : content.slice(0, 35),
             lastMessageTime: Date.now(),
             ...(isDm
               ? { type: 'direct', isDirect: true, participantIds: dmParticipants }

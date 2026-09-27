@@ -153,10 +153,9 @@ export const StoriesBar: React.FC = () => {
             ? 'from-emerald-400 via-teal-400 to-cyan-400'
             : 'from-pink-500 via-rose-400 to-amber-300';
 
-        const defaultMood = buddy.gender === 'male' ? '⚡' : '🌸';
         const storyText = buddy.moodText
-          ? `${buddy.moodEmoji || defaultMood} ${buddy.moodText}`
-          : `${defaultMood} Active on MochiChat today ✨`;
+          ? buddy.moodText
+          : 'Active on Simi today';
 
         storiesMap[buddy.id] = [
           {

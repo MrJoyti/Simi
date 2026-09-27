@@ -12,6 +12,7 @@ import {
   AlertCircle,
   Smile,
 } from 'lucide-react';
+import { CuteAvatar } from '../utils/avatars';
 import { sounds } from '../utils/sound';
 
 const FEMALE_PRESET_GRADIENTS = [
@@ -139,7 +140,7 @@ export const CreateStoryModal: React.FC = () => {
             : 'bg-gradient-to-r from-pink-50 via-rose-50 to-pink-50 border-pink-100'
         }`}>
           <div className="flex items-center gap-2">
-            <span className="text-xl">{isMale ? '⚡' : '🌸'}</span>
+            <Sparkles className={`w-5 h-5 ${isMale ? 'text-blue-400' : 'text-rose-500'}`} />
             <div>
               <h3 className={`text-sm font-bold ${isMale ? 'text-white' : 'text-slate-800'}`}>Add to 24h Story</h3>
               <p className={`text-[10px] font-medium ${isMale ? 'text-blue-400' : 'text-pink-500'}`}>Disappears in 24 hours</p>
@@ -221,7 +222,7 @@ export const CreateStoryModal: React.FC = () => {
                 {currentUser.customAvatarUrl ? (
                   <img src={currentUser.customAvatarUrl} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <span>{currentUser.moodEmoji || (isMale ? '⚡' : '🌸')}</span>
+                  <CuteAvatar id={currentUser.avatarId} size="xs" />
                 )}
               </div>
               <div className="text-white drop-shadow-md min-w-0">
@@ -246,7 +247,7 @@ export const CreateStoryModal: React.FC = () => {
                   mode === 'photo' && photoPreview ? 'text-white bg-black/40 p-2.5 rounded-2xl backdrop-blur-2xs' : 'text-white'
                 }`}
               >
-                {text || (mode === 'text' ? (isMale ? 'What’s on your mind?' : 'What’s on your mind? ✨') : 'Photo moments')}
+                {text || (mode === 'text' ? 'What’s on your mind?' : 'Photo moments')}
               </p>
             </div>
 

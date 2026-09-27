@@ -12,7 +12,7 @@ export const CreateRoomModal: React.FC = () => {
   const isMidnight = theme === 'midnight';
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [icon, setIcon] = useState(isMidnight ? '⚡' : '🌸');
+  const [icon, setIcon] = useState('💬');
   const [selectedBuddies, setSelectedBuddies] = useState<string[]>([]);
 
   if (!showCreateRoomModal) return null;
@@ -72,7 +72,7 @@ export const CreateRoomModal: React.FC = () => {
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <div>
             <label className={`block text-xs font-semibold mb-1.5 ${isMidnight ? 'text-slate-300' : 'text-slate-700'}`}>
-              Choose Group Emoji
+              Choose Group Icon
             </label>
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
               {(isMidnight ? ['⚡', '⚔️', '🛡️', '🛰️', '🔥', '⚙️', '🌌', '💎', '🚀', '🎯', '🏁', '🌐'] : ICON_SUGGESTIONS).map((ic) => (

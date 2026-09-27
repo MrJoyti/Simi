@@ -350,7 +350,7 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
                       : 'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200/60'
                   }`}
                 >
-                  🌙 Tonight (8:00 PM)
+                  Tonight (8:00 PM)
                 </button>
                 <button
                   type="button"
@@ -361,7 +361,7 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
                       : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200/60'
                   }`}
                 >
-                  🌅 Tomorrow (9:00 AM)
+                  Tomorrow (9:00 AM)
                 </button>
               </div>
             </div>
@@ -436,7 +436,7 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
                 }`}
               >
                 <Sparkles className="w-4 h-4" />
-                <span>{isSubmitting ? 'Scheduling...' : 'Schedule Message ✨'}</span>
+                <span>{isSubmitting ? 'Scheduling...' : 'Schedule Message'}</span>
               </button>
             </div>
           </form>

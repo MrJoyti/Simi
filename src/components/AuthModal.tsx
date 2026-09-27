@@ -28,6 +28,7 @@ import {
   KeyRound,
   Shield,
   Zap,
+  User as UserIcon,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -117,8 +118,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       emailVerified: isEmailVerified,
       avatarId: isMale ? 'wolf' : avatarId,
       ...(customPhotoUrl ? { customAvatarUrl: customPhotoUrl } : {}),
-      bio: isMale ? 'Live on MochiChat ⚡' : 'Happy sweetie chatting live on MochiChat 🌸',
-      moodEmoji: isMale ? '⚡' : '🌸',
+      bio: 'Active on Simi',
+      moodEmoji: '',
       moodText: 'Available',
       theme: isMale ? 'midnight' : 'strawberry',
       chatPattern: isMale ? 'midnight_grid' : 'mochi_dots',
@@ -126,7 +127,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       showActiveStatus: true,
       privacyVisibility: 'public',
       buddyIds: [],
-      badge: isMale ? '⚡ Midnight Member' : '✨ Verified Member',
+      badge: isMale ? 'Midnight Member' : 'Verified Member',
       soundEnabled: true,
       createdAt: Date.now(),
       lastSeen: Date.now(),
@@ -379,8 +380,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     return (
       <div className="fixed inset-0 z-50 bg-[#fff5f6]/95 backdrop-blur-md flex items-center justify-center p-4">
         <div className="w-full max-w-md bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-pink-100 flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
-          <div className="w-16 h-16 rounded-3xl bg-pink-100 flex items-center justify-center text-3xl mb-4 shadow-inner">
-            💌
+          <div className="w-16 h-16 rounded-3xl bg-pink-100 flex items-center justify-center mb-4 shadow-inner">
+            <Mail className="w-8 h-8 text-rose-500" />
           </div>
 
           <h2 className="text-xl font-bold text-slate-800 tracking-tight">
@@ -580,7 +581,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-pink-50'
                   }`}
                 >
-                  <span className="text-base">🌸</span>
+                  <UserIcon className="w-4 h-4 text-rose-500" />
                   <span>Female</span>
                 </button>
                 <button
@@ -598,7 +599,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-pink-50'
                   }`}
                 >
-                  <span className="text-base">⚡</span>
+                  <Shield className="w-4 h-4 text-blue-400" />
                   <span>Male</span>
                 </button>
               </div>
@@ -670,14 +671,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       <div className={`fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto transition-colors duration-300 ${isMaleMode ? 'bg-[#0B0F14]/95 text-slate-100' : 'bg-[#fff5f6]/95 text-slate-800'}`}>
         <div className={`w-full max-w-md rounded-3xl p-6 sm:p-8 shadow-2xl border flex flex-col my-auto transition-colors duration-300 ${isMaleMode ? 'bg-[#111821] border-[#1E3A5F]' : 'bg-white border-pink-100'}`}>
           <div className="text-center mb-5">
-            <div className={`w-14 h-14 rounded-3xl mx-auto flex items-center justify-center text-2xl text-white shadow-md mb-2 ${isMaleMode ? 'bg-gradient-to-tr from-blue-600 to-indigo-600' : 'bg-gradient-to-tr from-pink-400 to-rose-400'}`}>
-              {isMaleMode ? '⚡' : '🌸'}
+            <div className={`w-14 h-14 rounded-3xl mx-auto flex items-center justify-center text-white shadow-md mb-2 ${isMaleMode ? 'bg-gradient-to-tr from-blue-600 to-indigo-600' : 'bg-gradient-to-tr from-pink-400 to-rose-400'}`}>
+              {isMaleMode ? <Shield className="w-7 h-7" /> : <Sparkles className="w-7 h-7" />}
             </div>
             <h1 className="text-xl font-extrabold tracking-tight">
               One-Time Gender Setup
             </h1>
             <p className="text-xs opacity-70 mt-0.5">
-              Select your gender to unlock your customized MochiChat design system
+              Select your gender to unlock your customized Simi design system
             </p>
           </div>
 
@@ -709,7 +710,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-pink-50'
                   }`}
                 >
-                  <span className="text-lg">🌸</span>
+                  <UserIcon className="w-4 h-4 text-rose-500" />
                   <span>Female</span>
                 </button>
                 <button
@@ -727,7 +728,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-pink-50'
                   }`}
                 >
-                  <span className="text-lg">⚡</span>
+                  <Shield className="w-4 h-4 text-blue-400" />
                   <span>Male</span>
                 </button>
               </div>
@@ -861,7 +862,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-pink-50'
                     }`}
                   >
-                    <span>🌸</span>
+                    <UserIcon className="w-4 h-4 text-rose-500" />
                     <span>Female</span>
                   </button>
 
@@ -880,7 +881,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-pink-50'
                     }`}
                   >
-                    <span>⚡</span>
+                    <Shield className="w-4 h-4 text-blue-400" />
                     <span>Male</span>
                   </button>
                 </div>

@@ -90,8 +90,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
             }`}>
               Simi
             </h2>
-            <p className={`text-[10px] font-medium ${isMidnight ? 'text-slate-400' : 'text-pink-400'}`}>
-              {isMidnight ? 'Midnight Forge space' : 'Cozy pastel spaces'}
+            <p className={`text-[10px] font-medium ${isMidnight ? 'text-slate-400' : 'text-slate-500'}`}>
+              {isMidnight ? 'Midnight Space' : 'Chat & Connect'}
             </p>
           </div>
         </div>
@@ -435,7 +435,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
                           <span className={`text-xs font-bold truncate ${isMidnight ? 'text-slate-200' : 'text-slate-800'}`}>
                             {buddy.name}
                           </span>
-                          <span className="text-[11px]">{buddy.moodEmoji}</span>
+                          {buddy.moodEmoji ? <span className="text-[11px]">{buddy.moodEmoji}</span> : null}
                         </div>
                         <span className={`text-[10px] truncate block ${
                           presence.isOnline ? 'text-emerald-400 font-semibold' : 'text-slate-400'

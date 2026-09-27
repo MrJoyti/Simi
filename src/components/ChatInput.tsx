@@ -362,7 +362,7 @@ export const ChatInput: React.FC = () => {
         (progress) => setUploadProgress(progress)
       );
 
-      await sendMessage(caption.trim() || 'Shared a photo 📸', 'image', secureUrl);
+      await sendMessage(caption.trim() || 'Shared a photo', 'image', secureUrl);
       handleCloseImageModal();
     } catch (err: unknown) {
       console.error('Cloudinary upload error:', err);

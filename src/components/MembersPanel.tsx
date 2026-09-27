@@ -13,6 +13,8 @@ import {
   UserMinus,
   UserX,
   Check,
+  Smile,
+  Mic,
 } from 'lucide-react';
 import { sounds } from '../utils/sound';
 import { getUserPresence } from '../utils/presence';
@@ -66,7 +68,7 @@ export const MembersPanel: React.FC = () => {
         isMidnight ? 'border-slate-800' : 'border-pink-100'
       }`}>
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-lg">{currentRoom?.icon || (isMidnight ? '⚡' : '🌸')}</span>
+          <span className="text-lg">{currentRoom?.icon || '💬'}</span>
           <div className="min-w-0">
             <h3 className={`text-xs font-bold tracking-tight truncate max-w-[150px] ${
               isMidnight ? 'text-slate-100' : 'text-slate-800'
@@ -311,7 +313,7 @@ export const MembersPanel: React.FC = () => {
           <div className="space-y-2.5">
             {pinnedMessages.length === 0 ? (
               <div className="text-center py-10 px-4">
-                <span className="text-2xl">📌</span>
+                <Pin className="w-8 h-8 text-slate-300 mx-auto" />
                 <p className={`text-xs font-semibold mt-2 ${isMidnight ? 'text-slate-300' : 'text-slate-600'}`}>No pinned messages yet</p>
                 <p className="text-[11px] text-slate-400 mt-0.5">
                   Hover over any message and click the pin icon to keep memories saved here.
@@ -337,7 +339,7 @@ export const MembersPanel: React.FC = () => {
                     </button>
                   </div>
                   <p className="text-xs leading-snug line-clamp-3">
-                    {msg.type === 'sticker' ? '🎨 Sent a sticker' : msg.content}
+                    {msg.type === 'sticker' ? 'Sent a sticker' : msg.content}
                   </p>
                   <span className="text-[10px] text-slate-400 mt-1 block">
                     {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -352,7 +354,7 @@ export const MembersPanel: React.FC = () => {
           <div className="space-y-3">
             {mediaMessages.length === 0 ? (
               <div className="text-center py-10 px-4">
-                <span className="text-2xl">🖼️</span>
+                <ImageIcon className="w-8 h-8 text-slate-300 mx-auto" />
                 <p className={`text-xs font-semibold mt-2 ${isMidnight ? 'text-slate-300' : 'text-slate-600'}`}>No media shared yet</p>
                 <p className="text-[11px] text-slate-400 mt-0.5">
                   Send stickers, photos, or voice notes to populate this gallery!
@@ -375,14 +377,14 @@ export const MembersPanel: React.FC = () => {
                       />
                     ) : m.type === 'sticker' ? (
                       <div className="flex flex-col items-center">
-                        <span className="text-2xl">🎨</span>
+                        <Smile className="w-6 h-6 text-slate-400" />
                         <span className="text-[10px] text-slate-400 font-medium mt-1 truncate max-w-full">
                           {m.content}
                         </span>
                       </div>
                     ) : (
                       <div className={`flex flex-col items-center ${isMidnight ? 'text-blue-400' : 'text-rose-500'}`}>
-                        <span className="text-xl">🎙️</span>
+                        <Mic className="w-5 h-5" />
                         <span className="text-[10px] font-mono mt-1">{m.audioDuration || 3}s</span>
                       </div>
                     )}

@@ -8,17 +8,17 @@ export interface AvatarMeta {
 }
 
 export const AVATAR_LIST: AvatarMeta[] = [
-  { id: 'bunny', name: 'Mochi Bunny', bgColor: '#FFE4E6', badge: '🐰 Soft & Sweet' },
-  { id: 'kitten', name: 'Strawberry Cat', bgColor: '#FEF3C7', badge: '🍓 Purrfect' },
-  { id: 'bear', name: 'Teddy Hugs', bgColor: '#E0F2FE', badge: '🧸 Cozy Friend' },
-  { id: 'puppy', name: 'Boba Pup', bgColor: '#EDE9FE', badge: '🐶 High Energy' },
-  { id: 'fox', name: 'Peachy Fox', bgColor: '#FFEDD5', badge: '🦊 Playful' },
-  { id: 'panda', name: 'Bamboo Panda', bgColor: '#DCFCE7', badge: '🐼 Calm Vibes' },
-  { id: 'hamster', name: 'Cheeky Hammy', bgColor: '#FCE7F3', badge: '🐹 Snacking' },
-  { id: 'penguin', name: 'Pip Penguin', bgColor: '#E0E7FF', badge: '🐧 Waddle Cool' },
-  { id: 'wolf', name: 'Stealth Wolf', bgColor: '#1E293B', badge: '🐺 Alpha Vibe' },
-  { id: 'falcon', name: 'Cyber Falcon', bgColor: '#0F172A', badge: '🦅 High Precision' },
-  { id: 'dragon', name: 'Forge Dragon', bgColor: '#172554', badge: '⚡ Unstoppable' },
+  { id: 'bunny', name: 'Mochi Bunny', bgColor: '#FFE4E6', badge: 'Soft & Sweet' },
+  { id: 'kitten', name: 'Strawberry Cat', bgColor: '#FEF3C7', badge: 'Purrfect' },
+  { id: 'bear', name: 'Teddy Hugs', bgColor: '#E0F2FE', badge: 'Cozy Friend' },
+  { id: 'puppy', name: 'Boba Pup', bgColor: '#EDE9FE', badge: 'High Energy' },
+  { id: 'fox', name: 'Peachy Fox', bgColor: '#FFEDD5', badge: 'Playful' },
+  { id: 'panda', name: 'Bamboo Panda', bgColor: '#DCFCE7', badge: 'Calm Vibes' },
+  { id: 'hamster', name: 'Cheeky Hammy', bgColor: '#FCE7F3', badge: 'Snacking' },
+  { id: 'penguin', name: 'Pip Penguin', bgColor: '#E0E7FF', badge: 'Cool Vibe' },
+  { id: 'wolf', name: 'Stealth Wolf', bgColor: '#1E293B', badge: 'Alpha' },
+  { id: 'falcon', name: 'Cyber Falcon', bgColor: '#0F172A', badge: 'Precision' },
+  { id: 'dragon', name: 'Forge Dragon', bgColor: '#172554', badge: 'Unstoppable' },
 ];
 
 interface AvatarProps {
