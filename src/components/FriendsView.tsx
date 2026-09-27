@@ -264,7 +264,7 @@ export const FriendsView: React.FC = () => {
                       <button
                         onClick={() => {
                           sounds.playSend();
-                          acceptBuddyRequest(req.fromUserId, req.fromUserId);
+                          acceptBuddyRequest(req.id, req.fromUserId);
                         }}
                         className="px-3 py-1.5 rounded-2xl text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 shadow-2xs transition-transform active:scale-95"
                       >

@@ -1,5 +1,5 @@
 // Service Worker for MochiChat PWA, Offline Cache & Push Notifications
-const CACHE_NAME = 'mochichat-offline-v2';
+const CACHE_NAME = 'mochichat-offline-v3';
 
 const STATIC_ASSETS_TO_CACHE = [
   '/',

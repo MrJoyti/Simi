@@ -1134,6 +1134,28 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else if (currentUserRef.current) {
         list.push(currentUserRef.current);
       }
+
+      // Auto-reconcile mutual buddies: if another user in activeUsers already has me in their buddyIds,
+      // make sure I also have them in my buddyIds in local state and Firestore!
+      const usersWhoHaveMeAsBuddy = list.filter((u) => u.id !== currentUserId && (u.buddyIds || []).includes(currentUserId));
+      if (usersWhoHaveMeAsBuddy.length > 0) {
+        const missingFromMyBuddies = usersWhoHaveMeAsBuddy
+          .map((u) => u.id)
+          .filter((id) => !(currentUserRef.current?.buddyIds || []).includes(id));
+        if (missingFromMyBuddies.length > 0) {
+          setCurrentUser((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              buddyIds: Array.from(new Set([...(prev.buddyIds || []), ...missingFromMyBuddies])),
+            };
+          });
+          updateDoc(doc(db, 'users', currentUserId), {
+            buddyIds: arrayUnion(...missingFromMyBuddies),
+          }).catch(() => {});
+        }
+      }
+
       setActiveUsers(list);
     }, (err) => {
       console.warn('Users listener note:', err);
@@ -1608,18 +1630,34 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!user) return;
       sounds.playReceive();
 
-      const fromUserId =
-        fromUserIdParam ||
-        (requestIdOrFromUserId.includes('_') ? requestIdOrFromUserId.split('_')[0] : requestIdOrFromUserId);
-      const requestId = requestIdOrFromUserId.includes('_')
-        ? requestIdOrFromUserId
-        : `${fromUserId}_${user.id}`;
-      const altRequestId = `${user.id}_${fromUserId}`;
+      const myUid = auth.currentUser?.uid || user.id;
+
+      // Determine the exact other user ID
+      let fromUserId = fromUserIdParam || '';
+      if (!fromUserId) {
+        if (requestIdOrFromUserId.includes('_')) {
+          const parts = requestIdOrFromUserId.split('_');
+          fromUserId = parts[0] === myUid ? parts[1] : parts[0];
+        } else {
+          fromUserId = requestIdOrFromUserId;
+        }
+      }
+
+      // Find the request document from local state if available
+      const foundReq = buddyRequests.find(
+        (r) =>
+          r.id === requestIdOrFromUserId ||
+          (r.fromUserId === fromUserId && r.toUserId === myUid) ||
+          (r.fromUserId === myUid && r.toUserId === fromUserId)
+      );
+
+      const targetDocId = foundReq?.id || (requestIdOrFromUserId.includes('_') ? requestIdOrFromUserId : `${fromUserId}_${myUid}`);
+      const altDocId = `${myUid}_${fromUserId}`;
 
       // Optimistically update local state immediately
       setBuddyRequests((prev) =>
         prev.map((r) =>
-          r.id === requestId || r.id === altRequestId || (r.fromUserId === fromUserId && r.toUserId === user.id)
+          r.id === targetDocId || r.id === altDocId || (r.fromUserId === fromUserId && r.toUserId === myUid) || (r.fromUserId === myUid && r.toUserId === fromUserId)
             ? { ...r, status: 'accepted' }
             : r
         )
@@ -1630,48 +1668,62 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setActiveUsers((prev) =>
         prev.map((u) =>
           u.id === fromUserId
-            ? { ...u, buddyIds: Array.from(new Set([...(u.buddyIds || []), user.id])) }
+            ? { ...u, buddyIds: Array.from(new Set([...(u.buddyIds || []), myUid])) }
             : u
         )
       );
 
+      // Perform Firestore writes with isolated try-catches so failure of one does not abort the others
+      // 1. Mark the buddy request as accepted in Firestore
       try {
-        // 1. Update own user document
-        await updateDoc(doc(db, 'users', user.id), {
-          buddyIds: arrayUnion(fromUserId),
-        });
-
-        // 2. Update fromUser document if permissions allow
-        try {
-          await updateDoc(doc(db, 'users', fromUserId), {
-            buddyIds: arrayUnion(user.id),
-          });
-        } catch {
-          // Ignored if security rules restrict writing to other user documents
-        }
-
-        // 3. Mark the buddy request as accepted so fromUser's client syncs immediately!
-        const reqRef = doc(db, 'buddyRequests', requestId);
-        await setDoc(reqRef, {
+        const reqRef = doc(db, 'buddyRequests', targetDocId);
+        await updateDoc(reqRef, {
           status: 'accepted',
           updatedAt: Date.now(),
-        }, { merge: true });
-
-        if (requestId !== altRequestId) {
-          const altRef = doc(db, 'buddyRequests', altRequestId);
-          setDoc(altRef, { status: 'accepted', updatedAt: Date.now() }, { merge: true }).catch(() => {});
-        }
-
-        confetti({
-          particleCount: 40,
-          spread: 50,
-          origin: { y: 0.7 },
         });
-      } catch (e) {
-        console.error('Failed to accept buddy request:', e);
+      } catch {
+        try {
+          const reqRef = doc(db, 'buddyRequests', targetDocId);
+          await setDoc(reqRef, { status: 'accepted', updatedAt: Date.now() }, { merge: true });
+        } catch (err) {
+          console.warn('Accept buddy request write note:', err);
+        }
       }
+
+      if (targetDocId !== altDocId) {
+        try {
+          const altRef = doc(db, 'buddyRequests', altDocId);
+          updateDoc(altRef, { status: 'accepted', updatedAt: Date.now() }).catch(() => {});
+        } catch {
+          // ignore
+        }
+      }
+
+      // 2. Update own user document in Firestore
+      try {
+        await updateDoc(doc(db, 'users', myUid), {
+          buddyIds: arrayUnion(fromUserId),
+        });
+      } catch (err) {
+        console.warn('Update own buddyIds note:', err);
+      }
+
+      // 3. Update other user document in Firestore
+      try {
+        await updateDoc(doc(db, 'users', fromUserId), {
+          buddyIds: arrayUnion(myUid),
+        });
+      } catch {
+        // Ignored if security rules restrict writing to other user documents
+      }
+
+      confetti({
+        particleCount: 40,
+        spread: 50,
+        origin: { y: 0.7 },
+      });
     },
-    []
+    [buddyRequests]
   );
 
   const declineBuddyRequest = useCallback(
