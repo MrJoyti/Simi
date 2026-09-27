@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" width="1200" height="600">
+      <defs>
+        <linearGradient id="sky" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#0f172a"/>
+          <stop offset="40%" stop-color="#1e1b4b"/>
+          <stop offset="70%" stop-color="#431407"/>
+          <stop offset="100%" stop-color="#f97316"/>
+        </linearGradient>
+        <linearGradient id="lake" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#ea580c" stop-opacity="0.8"/>
+          <stop offset="50%" stop-color="#1e1b4b"/>
+          <stop offset="100%" stop-color="#090d16"/>
+        </linearGradient>
+      </defs>
+      <rect width="1200" height="400" fill="url(#sky)"/>
+      <circle cx="600" cy="360" r="140" fill="#ffedd5" opacity="0.9"/>
+      <!-- Mountains -->
+      <polygon points="100,400 350,220 550,400" fill="#18181b"/>
+      <polygon points="400,400 650,260 900,400" fill="#27272a"/>
+      <polygon points="750,400 1000,200 1200,400" fill="#09090b"/>
+      <!-- Lake -->
+      <rect y="400" width="1200" height="200" fill="url(#lake)"/>
+      <!-- Pines -->
+      <polygon points="200,430 220,330 240,430" fill="#052e16"/>
+      <polygon points="980,440 1005,320 1030,440" fill="#052e16"/>
+      <polygon points="1040,450 1060,350 1080,450" fill="#052e16"/>
+    </svg>

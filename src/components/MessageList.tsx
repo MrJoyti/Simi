@@ -303,7 +303,7 @@ export const MessageList: React.FC = () => {
                       } ${
                         isUser
                           ? `${activeTheme.userBubble} rounded-br-xs font-medium`
-                          : isMidnight ? 'bg-[#182230] text-slate-100 border border-slate-700/80 rounded-bl-xs shadow-sm' : 'bg-white text-slate-800 border border-pink-100/90 rounded-bl-xs'
+                          : isMidnight ? 'bg-[#131B2E]/90 text-slate-100 border border-slate-800/80 rounded-bl-xs shadow-sm backdrop-blur-md' : 'bg-white text-slate-800 border border-pink-100/90 rounded-bl-xs'
                       }`}
                     >
                       {msg.content}
@@ -315,15 +315,17 @@ export const MessageList: React.FC = () => {
                     <div className="flex items-center justify-end gap-1 mt-0.5 px-1.5 select-none">
                       {isReadByRecipient ? (
                         <span
-                          className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-500 drop-shadow-2xs animate-in fade-in duration-200"
+                          className={`inline-flex items-center gap-1 text-[10px] font-bold drop-shadow-2xs animate-in fade-in duration-200 ${
+                            isMidnight ? 'text-cyan-400' : 'text-rose-500'
+                          }`}
                           title={`Read by recipient ${
                             msg.readAt
                               ? 'at ' + new Date(msg.readAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                               : ''
                           }`}
                         >
-                          <CheckCheck className="w-3.5 h-3.5 stroke-[2.5] text-rose-500" />
-                          <span className="text-[10px] font-semibold text-rose-600">Read</span>
+                          <CheckCheck className={`w-3.5 h-3.5 stroke-[2.5] ${isMidnight ? 'text-cyan-400' : 'text-rose-500'}`} />
+                          <span className="text-[10px] font-semibold">Read</span>
                         </span>
                       ) : (
                         <span

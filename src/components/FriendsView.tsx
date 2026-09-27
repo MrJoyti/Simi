@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { sounds } from '../utils/sound';
 import { getUserPresence } from '../utils/presence';
+import { MALE_DEMO_ONLINE_FRIENDS } from '../utils/maleDemoData';
 
 export const FriendsView: React.FC = () => {
   const {
@@ -71,34 +72,33 @@ export const FriendsView: React.FC = () => {
       (isBuddy(u.id) && u.id.toLowerCase().includes(filterQuery.toLowerCase()))
   );
 
+  const onlineBuddies = activeUsers.filter((u) => {
+    if (u.id === currentUser?.id) return false;
+    const p = getUserPresence(u, false, isOnline, currentUser, activeUsers);
+    return p.isOnline;
+  });
+
   return (
     <div
       className={`flex-1 flex flex-col h-full overflow-y-auto p-4 sm:p-6 ${
-        isMidnight ? 'bg-[#0B0F14] text-slate-200' : 'bg-white/70'
+        isMidnight ? 'bg-[#0B0F17] text-slate-100 pb-20' : 'bg-white/70'
       }`}
     >
-      {/* Clean Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-        <div className="flex items-center gap-2">
-          <Users className={`w-5 h-5 ${isMidnight ? 'text-blue-400' : 'text-rose-500'}`} />
-          <h2
-            className={`text-base font-extrabold tracking-tight ${
-              isMidnight ? 'text-slate-100' : 'text-slate-800'
-            }`}
-          >
-            Buddies & Friend Requests
-          </h2>
-        </div>
+      {/* 1. Header Bar */}
+      <div className="flex items-center justify-between gap-3 mb-3.5">
+        <h2
+          className={`text-xl font-black tracking-tight ${
+            isMidnight ? 'text-slate-100' : 'text-slate-800'
+          }`}
+        >
+          {isMidnight ? 'Friends' : 'Buddies & Friend Requests'}
+        </h2>
 
         <div className="flex items-center gap-2">
-          {currentUser && (
+          {currentUser && !isMidnight && (
             <button
               onClick={copyMyId}
-              className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-2xl text-xs font-bold shadow-2xs transition-all ${
-                isMidnight
-                  ? 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-blue-400'
-                  : 'bg-white hover:bg-pink-50 border-pink-200 text-rose-600'
-              }`}
+              className="flex items-center gap-1.5 px-3 py-1.5 border rounded-2xl text-xs font-bold shadow-2xs transition-all bg-white hover:bg-pink-50 border-pink-200 text-rose-600"
             >
               {copiedId ? (
                 <Check className="w-3.5 h-3.5 text-emerald-400" />
@@ -114,96 +114,105 @@ export const FriendsView: React.FC = () => {
               sounds.playClick();
               setShowFindBuddyModal(true);
             }}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 text-white rounded-2xl text-xs font-bold shadow-xs hover:opacity-95 transition-transform active:scale-95 ${
+            className={`flex items-center gap-1.5 p-2 rounded-2xl text-xs font-bold shadow-xs hover:opacity-95 transition-transform active:scale-95 ${
               isMidnight
-                ? 'bg-gradient-to-r from-blue-600 to-cyan-600'
-                : 'bg-gradient-to-r from-pink-500 to-rose-500'
+                ? 'bg-slate-900 border border-slate-800 text-slate-300 hover:text-white'
+                : 'bg-gradient-to-r from-pink-500 to-rose-500 text-white px-3.5 py-1.5'
             }`}
+            title="Find User by ID"
           >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span>Find Buddy by ID</span>
+            <UserPlus className="w-4 h-4" />
+            {!isMidnight && <span>Find Buddy by ID</span>}
           </button>
         </div>
       </div>
 
-      {/* Tabs & Search Filter */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-4">
-        <div
-          className={`flex p-1 rounded-2xl border w-full sm:w-auto overflow-x-auto scrollbar-none ${
-            isMidnight ? 'bg-slate-900 border-slate-800' : 'bg-pink-100/60 border-pink-200/50'
+      {/* 2. Search Field */}
+      <div className="relative mb-3">
+        <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400 pointer-events-none" />
+        <input
+          type="text"
+          value={filterQuery}
+          onChange={(e) => setFilterQuery(e.target.value)}
+          placeholder={isMidnight ? "Search friends or @username..." : "Search by name or @username..."}
+          className={`w-full pl-9 pr-4 py-2 rounded-2xl text-xs font-medium focus:outline-none transition-all ${
+            isMidnight
+              ? 'bg-[#111827]/80 border border-slate-800 text-slate-100 placeholder-slate-500 focus:border-cyan-500 shadow-inner'
+              : 'bg-white border-slate-200 text-slate-800 focus:ring-2 focus:ring-pink-300'
           }`}
-        >
-          <button
-            onClick={() => {
-              sounds.playClick();
-              setFilterTab('buddies');
-            }}
-            className={`flex-1 sm:flex-none whitespace-nowrap px-2 sm:px-4 py-1.5 text-[11px] sm:text-xs font-bold rounded-xl transition-all ${
-              filterTab === 'buddies'
-                ? isMidnight
-                  ? 'bg-slate-800 text-blue-400 shadow-2xs'
-                  : 'bg-white text-rose-600 shadow-2xs'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            My Buddies ({buddies.length})
-          </button>
-
-          {/* Requests Option with Badge */}
-          <button
-            onClick={() => {
-              sounds.playClick();
-              setFilterTab('requests');
-            }}
-            className={`flex-1 sm:flex-none whitespace-nowrap px-2 sm:px-4 py-1.5 text-[11px] sm:text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1 sm:gap-1.5 relative ${
-              filterTab === 'requests'
-                ? isMidnight
-                  ? 'bg-slate-800 text-blue-400 shadow-2xs'
-                  : 'bg-white text-rose-600 shadow-2xs'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Bell className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
-            <span className="whitespace-nowrap">Requests ({incomingRequests.length})</span>
-            {incomingRequests.length > 0 && (
-              <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping absolute top-1 right-1" />
-            )}
-          </button>
-
-          <button
-            onClick={() => {
-              sounds.playClick();
-              setFilterTab('explore');
-            }}
-            className={`flex-1 sm:flex-none whitespace-nowrap px-2 sm:px-4 py-1.5 text-[11px] sm:text-xs font-bold rounded-xl transition-all ${
-              filterTab === 'explore'
-                ? isMidnight
-                  ? 'bg-slate-800 text-blue-400 shadow-2xs'
-                  : 'bg-white text-rose-600 shadow-2xs'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            Explore ({activeUsers.filter((u) => u.id !== currentUser?.id).length})
-          </button>
-        </div>
-
-        {filterTab !== 'requests' && (
-          <div className="relative flex-1 sm:max-w-xs">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
-            <input
-              type="text"
-              value={filterQuery}
-              onChange={(e) => setFilterQuery(e.target.value)}
-              placeholder="Search by name or @username..."
-              className={`w-full pl-8 pr-3 py-1.5 border rounded-2xl text-xs font-medium focus:outline-none ${
-                isMidnight
-                  ? 'bg-slate-900 border-slate-700 text-slate-100 placeholder-slate-500 focus:border-blue-500'
-                  : 'bg-white border-slate-200 text-slate-800 focus:ring-2 focus:ring-pink-300'
-              }`}
-            />
-          </div>
-        )}
+        />
       </div>
+
+      {/* 3. Filter Pills */}
+      <div className="flex items-center gap-2 overflow-x-auto scrollbar-none mb-4">
+        {[
+          { id: 'buddies', label: `All (${buddies.length})` },
+          { id: 'explore', label: `Online (${onlineBuddies.length || MALE_DEMO_ONLINE_FRIENDS.length})` },
+          { id: 'requests', label: incomingRequests.length > 0 ? `Requests (${incomingRequests.length})` : 'Requests' },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => {
+              sounds.playClick();
+              setFilterTab(tab.id as any);
+            }}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+              filterTab === tab.id
+                ? isMidnight
+                  ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 text-white shadow-md shadow-blue-950/60 glow-cyan-blue'
+                  : 'bg-rose-500 text-white shadow-2xs'
+                : isMidnight
+                ? 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800/80'
+                : 'bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* 4. For Male Experience: Online Now Horizontal Row */}
+      {isMidnight && filterTab !== 'requests' && (
+        <div className="mb-5 space-y-2.5">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider">
+              Online Now
+            </h3>
+            <button
+              onClick={() => sounds.playClick()}
+              className="text-[11px] font-bold text-cyan-400 hover:underline"
+            >
+              See All
+            </button>
+          </div>
+
+          <div className="flex items-center gap-3.5 overflow-x-auto scrollbar-none py-1">
+            {(onlineBuddies.length > 0 ? onlineBuddies : MALE_DEMO_ONLINE_FRIENDS).map((buddy: any) => (
+              <div
+                key={buddy.id}
+                onClick={() => {
+                  sounds.playClick();
+                  startDirectMessage(buddy);
+                }}
+                className="flex flex-col items-center shrink-0 cursor-pointer group active:scale-95 transition-transform"
+              >
+                <div className="relative">
+                  <CuteAvatar
+                    id={buddy.avatarId || buddy.avatar || 'bunny'}
+                    customUrl={buddy.customAvatarUrl || buddy.customAvatar}
+                    size="md"
+                    className="border-2 border-slate-800 ring-2 ring-blue-500/30 group-hover:ring-cyan-400 transition-all"
+                  />
+                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-[#0B0F17] shadow-sm" />
+                </div>
+                <span className="text-[10px] mt-1.5 font-bold text-slate-300 max-w-[56px] truncate text-center">
+                  {buddy.name}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Requests Section View */}
       {filterTab === 'requests' ? (
@@ -527,14 +536,14 @@ export const FriendsView: React.FC = () => {
                   ) : (
                     <button
                       onClick={() => sendBuddyRequest(user)}
-                      className={`px-3 py-1.5 rounded-2xl text-white text-xs font-bold flex items-center gap-1 shadow-xs transition-transform active:scale-95 ${
+                      className={`px-4 py-1.5 rounded-2xl text-white text-xs font-bold flex items-center gap-1 shadow-md transition-transform active:scale-95 ${
                         isMidnight
-                          ? 'bg-gradient-to-r from-blue-600 to-cyan-600'
+                          ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 shadow-blue-900/40 glow-cyan-blue'
                           : 'bg-gradient-to-r from-pink-500 to-rose-500'
                       }`}
                     >
                       <UserPlus className="w-3.5 h-3.5" />
-                      <span>Add Buddy</span>
+                      <span>{isMidnight ? 'Add' : 'Add Buddy'}</span>
                     </button>
                   )}
                 </div>

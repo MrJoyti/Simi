@@ -215,3 +215,39 @@ export interface ScheduledMessage {
   sentAt?: number;
   replyTo?: MessageReplyTo;
 }
+
+export interface SocialFeedPost {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorAvatar: string;
+  authorCustomAvatar?: string;
+  createdAt: number;
+  timeAgo: string;
+  isPublic?: boolean;
+  content: string;
+  images: string[];
+  likes: number;
+  commentsCount: number;
+  sharesCount: number;
+  isLiked?: boolean;
+  isSaved?: boolean;
+}
+
+export interface HighlightItem {
+  id: string;
+  title: string;
+  coverImage: string;
+  emoji?: string;
+}
+
+export interface MediaHubItem {
+  id: string;
+  type: 'photo' | 'video' | 'voice' | 'file';
+  url: string;
+  thumbnailUrl?: string;
+  title?: string;
+  duration?: string;
+  timestamp: number;
+  size?: string;
+}

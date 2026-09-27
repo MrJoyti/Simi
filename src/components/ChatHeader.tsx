@@ -109,7 +109,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ onToggleSidebarMobile })
   return (
     <header className={`sticky top-0 z-30 flex items-center justify-between px-3 sm:px-5 h-14 border-b shrink-0 select-none ${
       isMidnight
-        ? 'bg-[#111821]/95 backdrop-blur-md border-slate-800 text-slate-100'
+        ? 'bg-[#0B0F17]/95 backdrop-blur-xl border-slate-800/80 text-slate-100'
         : 'bg-white/90 backdrop-blur-md border-pink-100 text-slate-800'
     }`}>
       {/* LEFT: Back Button */}
@@ -138,21 +138,23 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ onToggleSidebarMobile })
               id={directBuddy.avatarId}
               customUrl={directBuddy.customAvatarUrl}
               size="sm"
-              className="ring-2 ring-pink-200"
+              className={isMidnight ? 'ring-2 ring-blue-500/40' : 'ring-2 ring-pink-200'}
             />
             {buddyPresence?.isOnline && (
-              <span className="absolute -top-0.5 -left-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white ring-1 ring-emerald-300 animate-pulse" />
+              <span className="absolute -top-0.5 -left-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-slate-900 ring-1 ring-emerald-300 animate-pulse" />
             )}
           </div>
         ) : (
-          <div className="w-9 h-9 rounded-2xl bg-pink-100 flex items-center justify-center text-xl shrink-0 border border-pink-200">
+          <div className="w-9 h-9 rounded-2xl bg-slate-800 flex items-center justify-center text-xl shrink-0 border border-slate-700">
             {currentRoom.icon}
           </div>
         )}
 
         <div className="min-w-0 text-left">
           <div className="flex items-center gap-1.5">
-            <h1 className="text-xs sm:text-sm font-bold truncate group-hover:text-pink-600 transition-colors">
+            <h1 className={`text-xs sm:text-sm font-bold truncate transition-colors ${
+              isMidnight ? 'text-slate-100 group-hover:text-cyan-400' : 'text-slate-800 group-hover:text-pink-600'
+            }`}>
               {isDirect && directBuddy ? directBuddy.name : currentRoom.name}
             </h1>
             {userBlocked && (
@@ -164,9 +166,11 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ onToggleSidebarMobile })
 
           <div className="text-[11px] truncate flex items-center gap-1">
             {typingText ? (
-              <span className="text-rose-500 font-semibold animate-pulse">{typingText}</span>
+              <span className={`${isMidnight ? 'text-cyan-400' : 'text-rose-500'} font-semibold animate-pulse`}>
+                {typingText}
+              </span>
             ) : isDirect && buddyPresence ? (
-              <span className={`font-medium ${buddyPresence.isOnline ? 'text-emerald-500 font-semibold' : 'text-slate-400'}`}>
+              <span className={`font-medium ${buddyPresence.isOnline ? 'text-emerald-400 font-semibold' : 'text-slate-400'}`}>
                 {buddyPresence.label}
               </span>
             ) : (
@@ -178,8 +182,26 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ onToggleSidebarMobile })
         </div>
       </div>
 
-      {/* RIGHT: Video Call | Audio Call | More ⋮ */}
+      {/* RIGHT: Audio Call | Video Call | More ⋮ */}
       <div className="flex items-center gap-1 shrink-0">
+        {/* Audio Call */}
+        {isDirect && directBuddy && (
+          <button
+            onClick={handleAudioCall}
+            disabled={Boolean(activeCall) || userBlocked}
+            className={`p-2 rounded-2xl transition-all ${
+              userBlocked
+                ? 'opacity-40 cursor-not-allowed text-slate-400'
+                : isMidnight
+                ? 'text-cyan-400 hover:bg-slate-800'
+                : 'text-rose-500 hover:bg-pink-50'
+            }`}
+            title={userBlocked ? 'Cannot call blocked user' : `Audio Call ${directBuddy.name}`}
+          >
+            <Phone className="w-4 h-4" />
+          </button>
+        )}
+
         {/* Video Call */}
         {isDirect && directBuddy && (
           <button
@@ -198,30 +220,12 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ onToggleSidebarMobile })
           </button>
         )}
 
-        {/* Audio Call */}
-        {isDirect && directBuddy && (
-          <button
-            onClick={handleAudioCall}
-            disabled={Boolean(activeCall) || userBlocked}
-            className={`p-2 rounded-2xl transition-all ${
-              userBlocked
-                ? 'opacity-40 cursor-not-allowed text-slate-400'
-                : isMidnight
-                ? 'text-blue-400 hover:bg-slate-800'
-                : 'text-rose-500 hover:bg-pink-50'
-            }`}
-            title={userBlocked ? 'Cannot call blocked user' : `Audio Call ${directBuddy.name}`}
-          >
-            <Phone className="w-4 h-4" />
-          </button>
-        )}
-
         {/* More ⋮ Button */}
         <button
           onClick={handleToggleDrawer}
           className={`p-2 rounded-2xl transition-colors ${
             showConversationInfoDrawer
-              ? 'bg-pink-100 text-rose-700 font-bold'
+              ? isMidnight ? 'bg-slate-800 text-cyan-400 font-bold' : 'bg-pink-100 text-rose-700 font-bold'
               : isMidnight
               ? 'text-slate-300 hover:bg-slate-800'
               : 'text-slate-600 hover:bg-pink-50'

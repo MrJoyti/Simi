@@ -14,7 +14,9 @@ import {
   BuddyRequest,
   BuddyRequestState,
   RelationshipState,
+  SocialFeedPost,
 } from '../types/chat';
+import { MALE_DEMO_POSTS } from '../utils/maleDemoData';
 import { Capacitor } from '@capacitor/core';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { sounds } from '../utils/sound';
@@ -144,6 +146,16 @@ interface ChatContextType {
   setShowFindBuddyModal: (show: boolean) => void;
   showMembersPanel: boolean;
   setShowMembersPanel: (show: boolean) => void;
+  showCreatePostModal: boolean;
+  setShowCreatePostModal: (show: boolean) => void;
+  showMediaHubModal: boolean;
+  setShowMediaHubModal: (show: boolean) => void;
+  showSettingsModal: boolean;
+  setShowSettingsModal: (show: boolean) => void;
+  feedPosts: SocialFeedPost[];
+  addFeedPost: (post: { content: string; images?: string[] }) => void;
+  toggleLikePost: (postId: string) => void;
+  toggleSavePost: (postId: string) => void;
   triggerConfetti: () => void;
   activeMobileTab: 'chats' | 'spaces' | 'friends' | 'profile';
   setActiveMobileTab: (tab: 'chats' | 'spaces' | 'friends' | 'profile') => void;
@@ -245,6 +257,72 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [showCreateRoomModal, setShowCreateRoomModal] = useState<boolean>(false);
   const [showFindBuddyModal, setShowFindBuddyModal] = useState<boolean>(false);
   const [showMembersPanel, setShowMembersPanel] = useState<boolean>(false);
+  const [showCreatePostModal, setShowCreatePostModal] = useState<boolean>(false);
+  const [showMediaHubModal, setShowMediaHubModal] = useState<boolean>(false);
+  const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
+
+  // Social feed posts state (persisted locally with fallback to MALE_DEMO_POSTS)
+  const [feedPosts, setFeedPosts] = useState<SocialFeedPost[]>(() => {
+    try {
+      const saved = localStorage.getItem('simi_male_feed_posts');
+      return saved ? JSON.parse(saved) : MALE_DEMO_POSTS;
+    } catch {
+      return MALE_DEMO_POSTS;
+    }
+  });
+
+  const addFeedPost = useCallback((postData: { content: string; images?: string[] }) => {
+    const user = currentUserRef.current;
+    const newPost: SocialFeedPost = {
+      id: `post_${Date.now()}`,
+      authorId: user?.id || 'current_user',
+      authorName: user?.name || 'Joyti Chakraborty',
+      authorAvatar: user?.avatarId || 'falcon',
+      authorCustomAvatar: user?.customAvatarUrl,
+      createdAt: Date.now(),
+      timeAgo: 'Just now',
+      isPublic: true,
+      content: postData.content,
+      images: postData.images || [],
+      likes: 1,
+      commentsCount: 0,
+      sharesCount: 0,
+      isLiked: true,
+      isSaved: false,
+    };
+    setFeedPosts((prev) => {
+      const updated = [newPost, ...prev];
+      try {
+        localStorage.setItem('simi_male_feed_posts', JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
+      return updated;
+    });
+  }, []);
+
+  const toggleLikePost = useCallback((postId: string) => {
+    setFeedPosts((prev) =>
+      prev.map((p) => {
+        if (p.id !== postId) return p;
+        const isLiked = !p.isLiked;
+        return {
+          ...p,
+          isLiked,
+          likes: isLiked ? p.likes + 1 : Math.max(0, p.likes - 1),
+        };
+      })
+    );
+  }, []);
+
+  const toggleSavePost = useCallback((postId: string) => {
+    setFeedPosts((prev) =>
+      prev.map((p) => {
+        if (p.id !== postId) return p;
+        return { ...p, isSaved: !p.isSaved };
+      })
+    );
+  }, []);
 
   // Ref to track marked read message IDs
   const markedReadRef = useRef<Set<string>>(new Set());
@@ -2595,6 +2673,16 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setShowFindBuddyModal,
         showMembersPanel,
         setShowMembersPanel,
+        showCreatePostModal,
+        setShowCreatePostModal,
+        showMediaHubModal,
+        setShowMediaHubModal,
+        showSettingsModal,
+        setShowSettingsModal,
+        feedPosts,
+        addFeedPost,
+        toggleLikePost,
+        toggleSavePost,
         triggerConfetti,
         activeMobileTab,
         setActiveMobileTab,

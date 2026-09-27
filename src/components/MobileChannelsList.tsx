@@ -11,6 +11,10 @@ import {
   Plus,
   UserPlus,
   Users,
+  Phone,
+  SlidersHorizontal,
+  Camera,
+  Mic,
 } from 'lucide-react';
 import { sounds } from '../utils/sound';
 import { getUserPresence } from '../utils/presence';
@@ -33,16 +37,19 @@ export const MobileChannelsList: React.FC = () => {
   } = useChat();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState<'all' | 'direct' | 'group'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'direct' | 'group' | 'unread'>('all');
 
   if (!currentUser) return null;
 
-  const isMidnight = theme === 'midnight';
+  const isMidnight = theme === 'midnight' || currentUser?.gender === 'male';
+
+  const totalUnreadCount = rooms.reduce((acc, r) => acc + (r.unreadCount || 0), 0);
 
   // Filter & Search rooms
   const filteredRooms = rooms.filter((room) => {
     if (filterType === 'direct' && room.type !== 'direct') return false;
     if (filterType === 'group' && room.type !== 'group') return false;
+    if (filterType === 'unread' && (!room.unreadCount || room.unreadCount <= 0)) return false;
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -81,42 +88,67 @@ export const MobileChannelsList: React.FC = () => {
 
   return (
     <div className={`flex-1 flex flex-col h-full overflow-hidden select-none ${
-      isMidnight ? 'bg-[#0B0F14] text-slate-100' : 'bg-pink-50/40'
+      isMidnight ? 'bg-[#0B0F17] text-slate-100' : 'bg-pink-50/40'
     }`}>
-      {/* 1. Main Chats Header (Specification #4: Header contains ONLY 'Chats') */}
-      <div className={`px-4 py-3 border-b flex items-center justify-between shrink-0 shadow-2xs z-10 ${
-        isMidnight ? 'bg-[#111821]/95 border-slate-800' : 'bg-white/95 border-pink-100'
+      {/* 1. Main Chats Header */}
+      <div className={`px-4 py-3.5 border-b flex items-center justify-between shrink-0 z-10 ${
+        isMidnight ? 'bg-[#0B0F17]/95 border-slate-800/80 backdrop-blur-xl' : 'bg-white/95 border-pink-100'
       }`}>
-        <h2 className={`text-lg font-extrabold tracking-tight flex items-center gap-2 ${
+        <h2 className={`text-xl font-black tracking-tight ${
           isMidnight ? 'text-slate-100' : 'text-slate-800'
         }`}>
-          <span>Chats</span>
+          Chats
         </h2>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              sounds.playClick();
-              setShowFindBuddyModal(true);
-            }}
-            className={`p-2 rounded-2xl transition-colors ${
-              isMidnight ? 'bg-slate-800 text-blue-400 hover:bg-slate-700' : 'bg-pink-50 hover:bg-pink-100 text-rose-600'
-            }`}
-            title="Find User / Buddy"
-          >
-            <UserPlus className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => {
-              sounds.playClick();
-              setShowCreateRoomModal(true);
-            }}
-            className="p-2 px-3 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs flex items-center gap-1 shadow-sm transition-all active:scale-95"
-            title="New Group Chat"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">New Group</span>
-          </button>
+          {isMidnight ? (
+            <>
+              <button
+                onClick={() => {
+                  sounds.playClick();
+                  setShowFindBuddyModal(true);
+                }}
+                className="w-9 h-9 rounded-2xl bg-slate-900/80 border border-slate-800 text-slate-300 hover:text-white flex items-center justify-center transition-colors"
+                title="Start Call"
+              >
+                <Phone className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => {
+                  sounds.playClick();
+                  setShowCreateRoomModal(true);
+                }}
+                className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-400 text-white flex items-center justify-center shadow-md shadow-blue-900/40 active:scale-95 transition-transform"
+                title="New Chat"
+              >
+                <Plus className="w-5 h-5 stroke-[2.5]" />
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => {
+                  sounds.playClick();
+                  setShowFindBuddyModal(true);
+                }}
+                className="p-2 rounded-2xl transition-colors bg-pink-50 hover:bg-pink-100 text-rose-600"
+                title="Find User / Buddy"
+              >
+                <UserPlus className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => {
+                  sounds.playClick();
+                  setShowCreateRoomModal(true);
+                }}
+                className="p-2 px-3 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs flex items-center gap-1 shadow-sm transition-all active:scale-95"
+                title="New Group Chat"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">New Group</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -131,7 +163,7 @@ export const MobileChannelsList: React.FC = () => {
             placeholder="Search conversations..."
             className={`w-full pl-9 pr-4 py-2 rounded-2xl text-xs font-medium focus:outline-none transition-all ${
               isMidnight
-                ? 'bg-slate-900 border border-slate-800 text-slate-100 placeholder-slate-500 focus:border-blue-500'
+                ? 'bg-[#111827]/80 border border-slate-800 text-slate-100 placeholder-slate-500 focus:border-cyan-500 shadow-inner'
                 : 'bg-white border border-pink-200/80 focus:border-pink-400 text-slate-800 placeholder-slate-400 shadow-2xs'
             }`}
           />
@@ -140,9 +172,10 @@ export const MobileChannelsList: React.FC = () => {
         {/* Filter Pills */}
         <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
           {[
-            { id: 'all', label: 'All Chats' },
+            { id: 'all', label: 'All' },
             { id: 'direct', label: 'Direct' },
             { id: 'group', label: 'Groups' },
+            { id: 'unread', label: totalUnreadCount > 0 ? `Unread (${totalUnreadCount})` : 'Unread' },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -150,13 +183,13 @@ export const MobileChannelsList: React.FC = () => {
                 sounds.playClick();
                 setFilterType(tab.id as any);
               }}
-              className={`px-3 py-1 rounded-xl text-xs font-bold transition-all shrink-0 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
                 filterType === tab.id
                   ? isMidnight
-                    ? 'bg-blue-900/80 text-blue-300 border border-blue-700'
+                    ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 text-white shadow-md shadow-blue-950/60 glow-cyan-blue'
                     : 'bg-rose-500 text-white shadow-2xs'
                   : isMidnight
-                  ? 'bg-slate-900 text-slate-400 border border-slate-800'
+                  ? 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800/80'
                   : 'bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50'
               }`}
             >
@@ -288,12 +321,14 @@ export const MobileChannelsList: React.FC = () => {
                     {/* Preview Text / Typing indicator */}
                     <div className="flex items-center justify-between gap-2">
                       {isTyping ? (
-                        <span className="text-[11px] font-semibold text-rose-500 animate-pulse truncate">
+                        <span className={`text-[11px] font-semibold animate-pulse truncate ${
+                          isMidnight ? 'text-cyan-400' : 'text-rose-500'
+                        }`}>
                           typing...
                         </span>
                       ) : (
                         <p className={`text-[11px] truncate leading-tight ${
-                          isMidnight ? 'text-slate-300 font-normal' : 'text-slate-500'
+                          isMidnight ? 'text-slate-400 font-normal' : 'text-slate-500'
                         }`}>
                           {room.lastMessage || (isDirect ? `Start chatting` : room.description)}
                         </p>
@@ -301,7 +336,11 @@ export const MobileChannelsList: React.FC = () => {
 
                       {/* Unread badge */}
                       {(room.unreadCount || 0) > 0 && (
-                        <span className="shrink-0 px-2 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-bold shadow-2xs animate-pulse">
+                        <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm ${
+                          isMidnight
+                            ? 'bg-blue-600 text-white shadow-blue-900/60 ring-1 ring-cyan-400/40'
+                            : 'bg-rose-500 text-white shadow-2xs animate-pulse'
+                        }`}>
                           {room.unreadCount}
                         </span>
                       )}

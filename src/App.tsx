@@ -14,6 +14,9 @@ import { ProfileModal } from './components/ProfileModal';
 import { CreateRoomModal } from './components/CreateRoomModal';
 import { FindBuddyModal } from './components/FindBuddyModal';
 import { CreateStoryModal } from './components/CreateStoryModal';
+import { CreatePostModal } from './components/CreatePostModal';
+import { MediaHubModal } from './components/MediaHubModal';
+import { SettingsModal } from './components/SettingsModal';
 import { VideoCallModal } from './components/VideoCallModal';
 import { MobileNavigation } from './components/MobileNavigation';
 import { FriendsView } from './components/FriendsView';
@@ -36,6 +39,13 @@ const ChatInterface: React.FC = () => {
     handleSignOut,
     showConversationInfoDrawer,
     setShowConversationInfoDrawer,
+    showCreatePostModal,
+    setShowCreatePostModal,
+    showMediaHubModal,
+    setShowMediaHubModal,
+    showSettingsModal,
+    setShowSettingsModal,
+    addFeedPost,
   } = useChat();
 
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -151,6 +161,19 @@ const ChatInterface: React.FC = () => {
       <CreateRoomModal />
       <FindBuddyModal />
       <CreateStoryModal />
+      <CreatePostModal
+        isOpen={showCreatePostModal}
+        onClose={() => setShowCreatePostModal(false)}
+        onPostCreated={addFeedPost}
+      />
+      <MediaHubModal
+        isOpen={showMediaHubModal}
+        onClose={() => setShowMediaHubModal(false)}
+      />
+      <SettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+      />
       <VideoCallModal />
       <ConversationInfoDrawer
         isOpen={showConversationInfoDrawer}

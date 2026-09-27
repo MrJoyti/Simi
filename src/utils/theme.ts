@@ -93,21 +93,37 @@ export const THEMES: Record<ThemeColor, ThemeStyles> = {
     tagBg: 'bg-sky-100/70 text-sky-900',
   },
   midnight: {
-    name: 'Midnight Forge',
+    name: 'Midnight Simi',
     icon: '⚡',
-    bodyBg: '#0B0F14',
-    sidebarBg: '#111821',
+    bodyBg: '#0B0F17',
+    sidebarBg: '#111827',
     accent: '#3B82F6',
     accentHover: '#2563EB',
-    accentText: '#BFDBFE',
-    accentLight: '#172554',
-    accentBorder: '#1E3A5F',
-    userBubble: 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-900/40',
+    accentText: '#60A5FA',
+    accentLight: '#1E293B',
+    accentBorder: '#1E3A8A',
+    userBubble: 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-lg shadow-blue-950/40',
     userBubbleText: 'text-white',
     ring: 'focus:ring-blue-500',
     tagBg: 'bg-blue-950/80 text-blue-300 border border-blue-800/50',
   },
 };
+
+export interface SimiThemeResolution {
+  isMale: boolean;
+  theme: ThemeColor;
+  styles: ThemeStyles;
+}
+
+export function resolveSimiTheme(user?: { gender?: string; theme?: ThemeColor } | null, activeThemeName?: ThemeColor): SimiThemeResolution {
+  const isMale = user?.gender === 'male' || activeThemeName === 'midnight';
+  const effectiveTheme: ThemeColor = isMale ? 'midnight' : (user?.theme || activeThemeName || 'strawberry');
+  return {
+    isMale,
+    theme: effectiveTheme,
+    styles: THEMES[effectiveTheme] || THEMES.strawberry,
+  };
+}
 
 export interface ChatPatternDefinition {
   id: ChatPattern;

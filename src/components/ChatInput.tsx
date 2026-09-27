@@ -601,33 +601,16 @@ export const ChatInput: React.FC = () => {
             onSubmit={handleSend}
             className={`flex items-center gap-1 sm:gap-2 border rounded-3xl p-1 sm:p-1.5 transition-all ${
               isMidnight
-                ? 'bg-[#182230] hover:bg-[#1e2b3c] focus-within:bg-[#1e2b3c] border-slate-700 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-950'
+                ? 'bg-[#111827]/90 hover:bg-[#131E35] focus-within:bg-[#131E35] border-slate-800 focus-within:border-cyan-500 shadow-xl'
                 : 'bg-pink-50/50 hover:bg-pink-50/80 focus-within:bg-white border-pink-200/70 focus-within:border-pink-400 focus-within:ring-2 focus-within:ring-pink-200'
             }`}
           >
-            {/* Sticker / Emoji Toggle */}
-            <button
-              type="button"
-              onClick={() => {
-                sounds.playClick();
-                setShowStickers(!showStickers);
-              }}
-              className={`p-1.5 sm:p-2 rounded-2xl transition-colors shrink-0 ${
-                showStickers
-                  ? isMidnight ? 'bg-slate-800 text-blue-400' : 'bg-rose-100 text-rose-700'
-                  : isMidnight ? 'text-slate-300 hover:text-blue-400 hover:bg-slate-800' : 'text-slate-500 hover:text-pink-600 hover:bg-pink-100/50'
-              }`}
-              title="Stickers & emoji"
-            >
-              <Smile className="w-4 h-4 shrink-0" />
-            </button>
-
-            {/* Photo Attachment Button (Opens file picker -> triggers Preview Modal) */}
+            {/* Attachment Button */}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               className={`p-1.5 sm:p-2 rounded-2xl transition-colors shrink-0 ${
-                isMidnight ? 'text-slate-300 hover:text-blue-400 hover:bg-slate-800' : 'text-slate-500 hover:text-pink-600 hover:bg-pink-100/50'
+                isMidnight ? 'text-slate-300 hover:text-cyan-400 hover:bg-slate-800' : 'text-slate-500 hover:text-pink-600 hover:bg-pink-100/50'
               }`}
               title="Attach photo from device"
             >
@@ -641,16 +624,21 @@ export const ChatInput: React.FC = () => {
               />
             </button>
 
-            {/* Voice Note Button (Triggers MediaRecorder) */}
+            {/* Sticker / Emoji Toggle */}
             <button
               type="button"
-              onClick={startRecording}
+              onClick={() => {
+                sounds.playClick();
+                setShowStickers(!showStickers);
+              }}
               className={`p-1.5 sm:p-2 rounded-2xl transition-colors shrink-0 ${
-                isMidnight ? 'text-slate-300 hover:text-blue-400 hover:bg-slate-800' : 'text-slate-500 hover:text-rose-600 hover:bg-pink-100/50'
+                showStickers
+                  ? isMidnight ? 'bg-slate-800 text-cyan-400' : 'bg-rose-100 text-rose-700'
+                  : isMidnight ? 'text-slate-300 hover:text-cyan-400 hover:bg-slate-800' : 'text-slate-500 hover:text-pink-600 hover:bg-pink-100/50'
               }`}
-              title="Record voice note"
+              title="Stickers & emoji"
             >
-              <Mic className="w-4 h-4 shrink-0" />
+              <Smile className="w-4 h-4 shrink-0" />
             </button>
 
             {/* Main Text Input */}
@@ -663,10 +651,10 @@ export const ChatInput: React.FC = () => {
               placeholder={
                 replyingTo
                   ? `Reply to ${replyingTo.senderName}...`
-                  : 'Send a message...'
+                  : 'Type a message...'
               }
               className={`flex-1 min-w-0 bg-transparent px-1 sm:px-2 text-xs sm:text-sm focus:outline-none font-medium ${
-                isMidnight ? 'text-slate-100 placeholder-slate-400' : 'text-slate-800 placeholder-slate-400'
+                isMidnight ? 'text-slate-100 placeholder-slate-500' : 'text-slate-800 placeholder-slate-400'
               }`}
             />
 
@@ -683,23 +671,33 @@ export const ChatInput: React.FC = () => {
               <Sparkles className="w-4 h-4 shrink-0" />
             </button>
 
-            {/* Send Button */}
-            <button
-              type="submit"
-              disabled={!text.trim()}
-              className={`p-2 sm:p-2.5 rounded-2xl flex items-center justify-center shrink-0 transition-all ${
-                text.trim()
-                  ? isMidnight
-                    ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-md shadow-blue-950/50 active:scale-95'
-                    : 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md shadow-pink-200 active:scale-95'
-                  : isMidnight
-                    ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
-                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-              }`}
-              title="Send message"
-            >
-              <Send className="w-4 h-4 shrink-0" />
-            </button>
+            {/* Send or Voice Record Action Button */}
+            {text.trim() ? (
+              <button
+                type="submit"
+                className={`p-2 sm:p-2.5 rounded-2xl flex items-center justify-center shrink-0 transition-all active:scale-95 ${
+                  isMidnight
+                    ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 text-white shadow-md shadow-blue-950/60 glow-cyan-blue'
+                    : 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md shadow-pink-200'
+                }`}
+                title="Send message"
+              >
+                <Send className="w-4 h-4 shrink-0" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={startRecording}
+                className={`p-2 sm:p-2.5 rounded-2xl flex items-center justify-center shrink-0 transition-all active:scale-95 ${
+                  isMidnight
+                    ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-md shadow-blue-950/60 glow-cyan-blue'
+                    : 'text-slate-500 hover:text-rose-600 hover:bg-pink-100/50'
+                }`}
+                title="Record voice note"
+              >
+                <Mic className="w-4 h-4 shrink-0" />
+              </button>
+            )}
           </form>
         </div>
       )}
