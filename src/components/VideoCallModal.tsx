@@ -66,9 +66,10 @@ export const VideoCallModal: React.FC = () => {
     endCall,
     currentUser,
     theme,
+    simiTheme,
   } = useChat();
 
-  const isMidnight = theme === 'midnight';
+  const isMidnight = simiTheme.isMale;
   const isVideoCall = activeCall?.callType !== 'audio';
   const isCaller = activeCall?.callerId === currentUser?.id;
 

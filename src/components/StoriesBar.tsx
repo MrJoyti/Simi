@@ -16,9 +16,10 @@ export const StoriesBar: React.FC = () => {
     activeUsers,
     setShowCreateStoryModal,
     theme,
+    simiTheme,
   } = useChat();
 
-  const isMale = theme === 'midnight';
+  const isMale = simiTheme.isMale;
   const [activeStoryIndex, setActiveStoryIndex] = useState<number | null>(null);
 
   // Local viewed stories tracking for immediate instant ring update

@@ -32,8 +32,8 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
   uploadProgress,
   errorMessage,
 }) => {
-  const { theme } = useChat();
-  const isMale = theme === 'midnight';
+  const { simiTheme } = useChat();
+  const isMale = simiTheme.isMale;
   const [caption, setCaption] = useState('');
 
   useEffect(() => {

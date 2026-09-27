@@ -43,9 +43,11 @@ export const CreateStoryModal: React.FC = () => {
     setShowCreateStoryModal,
     addStory,
     theme,
+    simiTheme,
+    showToast,
   } = useChat();
 
-  const isMale = theme === 'midnight';
+  const isMale = simiTheme.isMale;
   const PRESET_GRADIENTS = isMale ? MALE_PRESET_GRADIENTS : FEMALE_PRESET_GRADIENTS;
   const PRESET_EMOJIS = isMale ? MALE_PRESET_EMOJIS : FEMALE_PRESET_EMOJIS;
 
@@ -78,11 +80,11 @@ export const CreateStoryModal: React.FC = () => {
     const file = e.target.files?.[0];
     if (file) {
       if (!file.type.startsWith('image/')) {
-        alert('Please choose an image file.');
+        showToast('Please choose an image file.', 'error');
         return;
       }
       if (file.size > 8 * 1024 * 1024) {
-        alert('Please choose an image under 8MB.');
+        showToast('Please choose an image under 8MB.', 'error');
         return;
       }
 

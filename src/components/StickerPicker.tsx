@@ -16,8 +16,8 @@ export const StickerPicker: React.FC<StickerPickerProps> = ({
   onSelectEmoji,
   onClose,
 }) => {
-  const { theme } = useChat();
-  const isMale = theme === 'midnight';
+  const { simiTheme } = useChat();
+  const isMale = simiTheme.isMale;
 
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [searchFilter, setSearchFilter] = useState<string>('');

@@ -14,8 +14,8 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
   duration = 3,
   isUser,
 }) => {
-  const { theme } = useChat();
-  const isMale = theme === 'midnight';
+  const { simiTheme } = useChat();
+  const isMale = simiTheme.isMale;
 
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);

@@ -36,11 +36,12 @@ export const MessageList: React.FC = () => {
     currentRoom,
     typingUsers,
     isOnline,
+    simiTheme,
   } = useChat();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const { isFemale, isMale } = resolveSimiTheme(currentUser);
+  const { isFemale, isMale } = simiTheme;
   const activeTheme = isFemale ? THEMES.strawberry : (THEMES[theme] || THEMES.strawberry);
   const activePattern = CHAT_PATTERNS[chatPattern] || CHAT_PATTERNS.mochi_dots;
 
@@ -111,7 +112,7 @@ export const MessageList: React.FC = () => {
     }
   };
 
-  const isMidnight = isMale && theme === 'midnight';
+  const isMidnight = simiTheme.isMale;
 
   return (
     <div

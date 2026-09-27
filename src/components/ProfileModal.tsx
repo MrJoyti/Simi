@@ -62,6 +62,8 @@ export const ProfileModal: React.FC = () => {
     isBlocked,
     toggleBlockUser,
     handleSignOut,
+    simiTheme,
+    showToast,
   } = useChat();
 
   const handleClose = () => {
@@ -76,7 +78,7 @@ export const ProfileModal: React.FC = () => {
     const isAllowed = canViewProfile(selectedProfileUser, currentUser, activeUsers);
     const reqState = getBuddyRequestState(selectedProfileUser.id);
     const blocked = isBlocked(selectedProfileUser.id);
-    const isMidnight = currentActiveTheme === 'midnight';
+    const isMidnight = simiTheme.isMale;
 
     const activeReq = buddyRequests.find(
       (r) =>
@@ -327,7 +329,7 @@ export const ProfileModal: React.FC = () => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) {
-        alert('Please choose an image under 2MB.');
+        showToast('Please choose an image under 2MB.', 'error');
         return;
       }
       const reader = new FileReader();
@@ -343,7 +345,7 @@ export const ProfileModal: React.FC = () => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        alert('Please choose an image under 5MB.');
+        showToast('Please choose an image under 5MB.', 'error');
         return;
       }
       const reader = new FileReader();

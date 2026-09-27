@@ -17,8 +17,6 @@ import {
 } from 'lucide-react';
 import { sounds } from '../utils/sound';
 import { getUserPresence } from '../utils/presence';
-import { MALE_DEMO_ONLINE_FRIENDS } from '../utils/maleDemoData';
-import { FEMALE_DEMO_ONLINE_FRIENDS, FEMALE_DEMO_SUGGESTED_USERS } from '../utils/femaleDemoData';
 
 export const FriendsView: React.FC = () => {
   const {
@@ -38,10 +36,11 @@ export const FriendsView: React.FC = () => {
     setShowFindBuddyModal,
     isOnline,
     theme,
+    simiTheme,
+    showToast,
   } = useChat();
 
-  const isMale = currentUser?.gender ? currentUser.gender === 'male' : theme === 'midnight';
-  const isMidnight = isMale;
+  const isMidnight = simiTheme.isMale;
 
   const incomingRequests = buddyRequests.filter(
     (r) => r.toUserId === currentUser?.id && r.status === 'pending'
@@ -61,6 +60,7 @@ export const FriendsView: React.FC = () => {
     sounds.playClick();
     navigator.clipboard.writeText(currentUser.id);
     setCopiedId(true);
+    showToast('User ID copied to clipboard!', 'info');
     setTimeout(() => setCopiedId(false), 2000);
   };
 
@@ -98,10 +98,14 @@ export const FriendsView: React.FC = () => {
         </h2>
 
         <div className="flex items-center gap-2">
-          {currentUser && !isMidnight && (
+          {currentUser && (
             <button
               onClick={copyMyId}
-              className="flex items-center gap-1.5 px-3 py-1.5 border rounded-full text-xs font-bold shadow-2xs transition-all bg-white hover:bg-pink-50 border-pink-200 text-rose-600"
+              className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-full text-xs font-bold shadow-2xs transition-all ${
+                isMidnight
+                  ? 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-300 hover:text-white'
+                  : 'bg-white hover:bg-pink-50 border-pink-200 text-rose-600'
+              }`}
             >
               {copiedId ? (
                 <Check className="w-3.5 h-3.5 text-emerald-500" />
@@ -149,8 +153,8 @@ export const FriendsView: React.FC = () => {
       {/* 3. Filter Pills */}
       <div className="flex items-center gap-2 overflow-x-auto scrollbar-none mb-4">
         {[
-          { id: 'buddies', label: `All (${buddies.length || '2.4K'})` },
-          { id: 'explore', label: `Online (${onlineBuddies.length || (isMidnight ? MALE_DEMO_ONLINE_FRIENDS.length : 320)})` },
+          { id: 'buddies', label: `All (${buddies.length})` },
+          { id: 'explore', label: `Online (${onlineBuddies.length})` },
           { id: 'requests', label: incomingRequests.length > 0 ? `Requests (${incomingRequests.length})` : 'Requests' },
         ].map((tab) => (
           <button
@@ -174,32 +178,19 @@ export const FriendsView: React.FC = () => {
         ))}
       </div>
 
-      {/* 4. Online Now Horizontal Row (matching reference Screen 3) */}
-      {filterTab !== 'requests' && (
+      {/* 4. Online Now Horizontal Row (only rendered when online buddies exist) */}
+      {filterTab !== 'requests' && onlineBuddies.length > 0 && (
         <div className="mb-5 space-y-2.5">
           <div className="flex items-center justify-between px-1">
             <h3 className={`text-xs font-bold uppercase tracking-wider ${
               isMidnight ? 'text-slate-200' : 'text-slate-700'
             }`}>
-              Online Now
+              Online Now ({onlineBuddies.length})
             </h3>
-            <button
-              onClick={() => sounds.playClick()}
-              className={`text-[11px] font-bold hover:underline ${
-                isMidnight ? 'text-cyan-400' : 'text-rose-500'
-              }`}
-            >
-              See All
-            </button>
           </div>
 
           <div className="flex items-center gap-3.5 overflow-x-auto scrollbar-none py-1">
-            {(onlineBuddies.length > 0
-              ? onlineBuddies
-              : isMidnight
-              ? MALE_DEMO_ONLINE_FRIENDS
-              : FEMALE_DEMO_ONLINE_FRIENDS
-            ).map((buddy: any) => (
+            {onlineBuddies.map((buddy: any) => (
               <div
                 key={buddy.id}
                 onClick={() => {

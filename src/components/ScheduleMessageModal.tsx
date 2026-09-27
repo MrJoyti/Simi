@@ -34,9 +34,10 @@ export const ScheduleMessageModal: React.FC<ScheduleMessageModalProps> = ({
     sendScheduledMessageNow,
     replyingTo,
     theme,
+    simiTheme,
   } = useChat();
 
-  const isMale = theme === 'midnight';
+  const isMale = simiTheme.isMale;
   const [activeTab, setActiveTab] = useState<'schedule' | 'manage'>('schedule');
 
   // Filter scheduled messages for this specific room

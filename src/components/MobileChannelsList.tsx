@@ -34,6 +34,7 @@ export const MobileChannelsList: React.FC = () => {
     isRoomFavorite,
     typingUsers,
     setActiveMobileTab,
+    simiTheme,
   } = useChat();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -41,8 +42,8 @@ export const MobileChannelsList: React.FC = () => {
 
   if (!currentUser) return null;
 
-  const isMale = currentUser?.gender ? currentUser.gender === 'male' : theme === 'midnight';
-  const isMidnight = isMale;
+  const isMidnight = simiTheme.isMale;
+  const isMale = isMidnight;
 
   const totalUnreadCount = rooms.reduce((acc, r) => acc + (r.unreadCount || 0), 0);
 

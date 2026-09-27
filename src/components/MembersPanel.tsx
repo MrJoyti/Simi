@@ -39,9 +39,10 @@ export const MembersPanel: React.FC = () => {
     removeBuddy,
     isOnline,
     theme,
+    simiTheme,
   } = useChat();
 
-  const isMidnight = theme === 'midnight';
+  const isMidnight = simiTheme.isMale;
   const [activeTab, setActiveTab] = useState<'members' | 'pinned' | 'media'>('members');
 
   if (!showMembersPanel) return null;

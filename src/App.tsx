@@ -25,6 +25,7 @@ import { MobileChannelsList } from './components/MobileChannelsList';
 import { VerseView } from './components/VerseView';
 import { AuthModal } from './components/AuthModal';
 import { ConversationInfoDrawer } from './components/ConversationInfoDrawer';
+import { SimiToastContainer } from './components/SimiToast';
 import { THEMES } from './utils/theme';
 
 const ChatInterface: React.FC = () => {
@@ -46,10 +47,11 @@ const ChatInterface: React.FC = () => {
     showSettingsModal,
     setShowSettingsModal,
     addFeedPost,
+    simiTheme,
   } = useChat();
 
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const activeTheme = THEMES[theme] || THEMES.strawberry;
+  const activeTheme = simiTheme.styles;
 
   // Loading state
   if (isAuthLoading) {
@@ -81,7 +83,7 @@ const ChatInterface: React.FC = () => {
     );
   }
 
-  const isMaleTheme = theme === 'midnight';
+  const isMaleTheme = simiTheme.isMale;
 
   return (
     <div
@@ -179,6 +181,7 @@ const ChatInterface: React.FC = () => {
         isOpen={showConversationInfoDrawer}
         onClose={() => setShowConversationInfoDrawer(false)}
       />
+      <SimiToastContainer />
     </div>
   );
 };

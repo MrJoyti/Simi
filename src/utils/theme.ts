@@ -148,6 +148,29 @@ export interface SimiThemeResolution {
   isFemale: boolean;
   theme: ThemeColor;
   styles: ThemeStyles;
+  // Common visual tokens for components (Section 26 & 28):
+  bgCanvas: string;
+  surface: string;
+  surfaceGlass: string;
+  surfaceBorder: string;
+  textPrimary: string;
+  textSecondary: string;
+  textMuted: string;
+  accentPrimary: string;
+  accentGradient: string;
+  accentShadow: string;
+  userBubble: string;
+  otherBubble: string;
+  storyRing: string;
+  tabActive: string;
+  tabInactive: string;
+  emptyIconBg: string;
+  emptyIconColor: string;
+  modalBg: string;
+  modalBorder: string;
+  modalHeaderBg: string;
+  actionPillActive: string;
+  actionPillInactive: string;
 }
 
 export function resolveSimiTheme(user?: { gender?: string; theme?: ThemeColor } | null, activeThemeName?: ThemeColor): SimiThemeResolution {
@@ -166,11 +189,49 @@ export function resolveSimiTheme(user?: { gender?: string; theme?: ThemeColor } 
     ? 'midnight'
     : (user?.theme && user.theme !== 'midnight' ? user.theme : (activeThemeName && activeThemeName !== 'midnight' ? activeThemeName : 'strawberry'));
 
+  const styles = THEMES[effectiveTheme] || THEMES.strawberry;
+
   return {
     isMale,
     isFemale,
     theme: effectiveTheme,
-    styles: THEMES[effectiveTheme] || THEMES.strawberry,
+    styles,
+    bgCanvas: isMale ? 'bg-[#0B0F17]' : 'bg-female-canvas',
+    surface: isMale ? 'bg-[#111827]' : 'bg-white',
+    surfaceGlass: isMale ? 'glass-panel-male' : 'glass-panel-female',
+    surfaceBorder: isMale ? 'border-slate-800/80' : 'border-pink-100/90',
+    textPrimary: isMale ? 'text-slate-100' : 'text-slate-800',
+    textSecondary: isMale ? 'text-slate-300' : 'text-slate-600',
+    textMuted: isMale ? 'text-slate-400' : 'text-slate-400',
+    accentPrimary: isMale ? '#3B82F6' : '#F43F5E',
+    accentGradient: isMale
+      ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500'
+      : 'bg-gradient-to-r from-rose-500 via-pink-500 to-rose-400',
+    accentShadow: isMale ? 'shadow-md shadow-blue-950/60 glow-cyan-blue' : 'shadow-md shadow-rose-200/60',
+    userBubble: isMale
+      ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-lg shadow-blue-950/40 rounded-br-xs font-medium'
+      : 'bg-gradient-to-r from-rose-500 via-pink-500 to-rose-400 text-white shadow-sm shadow-rose-200/60 rounded-br-xs font-medium',
+    otherBubble: isMale
+      ? 'bg-[#131B2E]/90 text-slate-100 border border-slate-800/80 rounded-bl-xs shadow-sm backdrop-blur-md'
+      : 'bg-white text-slate-800 border border-pink-100/90 rounded-bl-xs shadow-2xs',
+    storyRing: isMale ? 'story-ring-male' : 'story-ring-female',
+    tabActive: isMale
+      ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 text-white shadow-md shadow-blue-950/60 glow-cyan-blue'
+      : 'bg-gradient-to-r from-rose-500 via-pink-500 to-rose-400 text-white shadow-xs',
+    tabInactive: isMale
+      ? 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800/80'
+      : 'bg-white/80 text-slate-600 border border-pink-100/70 hover:bg-pink-50',
+    emptyIconBg: isMale ? 'bg-slate-800/80 text-blue-400' : 'bg-pink-100/80 text-rose-500',
+    emptyIconColor: isMale ? 'text-blue-400' : 'text-rose-500',
+    modalBg: isMale ? 'bg-[#111827] text-slate-100 border-slate-800' : 'bg-white text-slate-800 border-pink-100',
+    modalBorder: isMale ? 'border-slate-800/80' : 'border-pink-100/80',
+    modalHeaderBg: isMale ? 'bg-slate-900/60 border-slate-800/80' : 'bg-[#FFF7F9]/95 border-pink-100/80',
+    actionPillActive: isMale
+      ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 text-white'
+      : 'bg-gradient-to-r from-rose-500 via-pink-500 to-rose-400 text-white',
+    actionPillInactive: isMale
+      ? 'bg-slate-900/60 hover:bg-slate-800/80 border-slate-800/80 text-slate-200'
+      : 'bg-white hover:bg-pink-50/70 border-pink-100/90 text-slate-700 shadow-2xs',
   };
 }
 

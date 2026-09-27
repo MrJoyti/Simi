@@ -23,7 +23,6 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ onToggleSidebarMobile })
     setCurrentRoomId,
     activeUsers,
     currentUser,
-    theme,
     typingUsers,
     startVideoCall,
     startAudioCall,
@@ -35,12 +34,13 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ onToggleSidebarMobile })
     setShowProfileModal,
     setSelectedProfileUser,
     isBlocked,
+    simiTheme,
+    showToast,
   } = useChat();
 
   if (!currentRoom || !currentUser) return null;
 
-  const isMale = currentUser?.gender ? currentUser.gender === 'male' : theme === 'midnight';
-  const isMidnight = isMale;
+  const isMidnight = simiTheme.isMale;
   const isDirect = currentRoom.type === 'direct' || currentRoom.isDirect;
 
   // Direct DM Buddy
@@ -83,7 +83,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ onToggleSidebarMobile })
       setSelectedProfileUser(directBuddy);
       setShowProfileModal(true);
     } else {
-      alert(`@${directBuddy.username}'s profile is private.`);
+      showToast(`@${directBuddy.username}'s profile is private.`, 'info');
     }
   };
 

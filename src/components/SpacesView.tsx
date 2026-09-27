@@ -4,8 +4,8 @@ import { Hash, Sparkles, Plus } from 'lucide-react';
 import { sounds } from '../utils/sound';
 
 export const SpacesView: React.FC = () => {
-  const { theme } = useChat();
-  const isMidnight = theme === 'midnight';
+  const { simiTheme } = useChat();
+  const isMidnight = simiTheme.isMale;
 
   return (
     <div className={`flex-1 flex flex-col h-full overflow-hidden select-none ${

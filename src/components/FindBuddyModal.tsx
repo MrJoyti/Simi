@@ -32,9 +32,11 @@ export const FindBuddyModal: React.FC = () => {
     activeUsers,
     isOnline,
     theme,
+    simiTheme,
+    showToast,
   } = useChat();
 
-  const isMidnight = theme === 'midnight';
+  const isMidnight = simiTheme.isMale;
   const [searchQuery, setSearchQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
@@ -59,6 +61,7 @@ export const FindBuddyModal: React.FC = () => {
     sounds.playClick();
     navigator.clipboard.writeText(currentUser.id);
     setCopiedId(true);
+    showToast('Your User ID copied to clipboard!', 'info');
     setTimeout(() => setCopiedId(false), 2000);
   };
 

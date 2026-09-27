@@ -52,13 +52,15 @@ export const ConversationInfoDrawer: React.FC<ConversationInfoDrawerProps> = ({
     isBlocked,
     setShowProfileModal,
     setSelectedProfileUser,
+    simiTheme,
+    showToast,
   } = useChat();
 
   const [activeTab, setActiveTab] = useState<'info' | 'media' | 'docs' | 'links' | 'theme'>('info');
 
   if (!isOpen || !currentRoom || !currentUser) return null;
 
-  const isMidnight = theme === 'midnight';
+  const isMidnight = simiTheme.isMale;
   const isDirect = currentRoom.type === 'direct' || currentRoom.isDirect;
 
   // Direct DM Target user
@@ -118,7 +120,7 @@ export const ConversationInfoDrawer: React.FC<ConversationInfoDrawerProps> = ({
       setSelectedProfileUser(targetUser);
       setShowProfileModal(true);
     } else {
-      alert(`@${targetUser.username}'s profile is private.`);
+      showToast(`@${targetUser.username}'s profile is private.`, 'info');
     }
   };
 

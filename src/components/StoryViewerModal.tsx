@@ -27,8 +27,8 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
   initialIndex = 0,
   onClose,
 }) => {
-  const { currentUser, markStoryViewed, reactToStory, deleteStory, theme } = useChat();
-  const isMale = theme === 'midnight';
+  const { currentUser, markStoryViewed, reactToStory, deleteStory, simiTheme } = useChat();
+  const isMale = simiTheme.isMale;
 
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [progress, setProgress] = useState(0);

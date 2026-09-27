@@ -42,11 +42,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
     isRoomPinned,
     isRoomFavorite,
     buddyRequests,
+    simiTheme,
   } = useChat();
 
   const [filterQuery, setFilterQuery] = useState('');
   const activeTheme = THEMES[theme] || THEMES.strawberry;
-  const isMidnight = theme === 'midnight';
+  const isMidnight = simiTheme.isMale;
 
   const handleSelectRoom = (roomId: string) => {
     sounds.playClick();

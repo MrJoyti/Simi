@@ -27,16 +27,11 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
   onClose,
   onPostCreated,
 }) => {
-  const { currentUser, addStory, triggerConfetti, theme } = useChat();
-  const { isFemale, isMale } = resolveSimiTheme(currentUser);
-  const isMidnight = isMale && (theme === 'midnight' || currentUser?.gender === 'male');
+  const { currentUser, addStory, triggerConfetti, simiTheme, showToast } = useChat();
+  const isMidnight = simiTheme.isMale;
 
   const [text, setText] = useState('');
-  const [images, setImages] = useState<string[]>([
-    'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=400&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=400&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=400&auto=format&fit=crop&q=80',
-  ]);
+  const [images, setImages] = useState<string[]>([]);
   const [selectedMood, setSelectedMood] = useState<string>('');
   const [selectedLocation, setSelectedLocation] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -227,7 +222,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
               type="button"
               onClick={() => {
                 sounds.playClick();
-                alert('Voice recording note feature ready in chats!');
+                showToast('Voice recording note feature is ready in direct chats!', 'info');
               }}
               className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all border ${
                 isMidnight
@@ -302,7 +297,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
               type="button"
               onClick={() => {
                 sounds.playClick();
-                alert('Mention friends by typing @ in your post!');
+                showToast('Mention friends by typing @ in your post!', 'info');
               }}
               className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all border ${
                 isMidnight

@@ -1,6 +1,43 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap');
 @import "tailwindcss";
 
+/* -----------------------------------------------------------
+ * Simi Design Tokens: Shared root variables for Male and Female
+ * ----------------------------------------------------------- */
+:root {
+  --simi-bg: #FFF7F9;
+  --simi-surface: rgba(255, 255, 255, 0.88);
+  --simi-surface-soft: rgba(255, 245, 247, 0.75);
+  --simi-primary: #F43F5E;
+  --simi-secondary: #EC4899;
+  --simi-accent: #E11D74;
+  --simi-text: #1F1625;
+  --simi-muted: #7A6E82;
+  --simi-success: #10B981;
+  --simi-danger: #EF4444;
+  --simi-border: rgba(244, 114, 182, 0.22);
+  --simi-glass: rgba(255, 255, 255, 0.85);
+  --simi-shadow: 0 10px 30px -5px rgba(244, 63, 94, 0.08);
+  --simi-radius: 1.25rem;
+  --simi-transition: 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+[data-simi-theme="male"] {
+  --simi-bg: #0B0F17;
+  --simi-surface: rgba(17, 24, 39, 0.78);
+  --simi-surface-soft: rgba(17, 24, 39, 0.65);
+  --simi-primary: #3B82F6;
+  --simi-secondary: #06B6D4;
+  --simi-accent: #60A5FA;
+  --simi-text: #F1F5F9;
+  --simi-muted: #94A3B8;
+  --simi-success: #10B981;
+  --simi-danger: #EF4444;
+  --simi-border: rgba(59, 130, 246, 0.16);
+  --simi-glass: rgba(17, 24, 39, 0.82);
+  --simi-shadow: 0 10px 35px -5px rgba(0, 0, 0, 0.5);
+}
+
 @layer base {
   * {
     border-color: rgba(244, 114, 182, 0.15);
@@ -10,17 +47,10 @@
 
   html, body {
     height: 100%;
-    height: 100dvh;
     width: 100%;
-    width: 100dvw;
     margin: 0;
     padding: 0;
     overflow: hidden;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
     overscroll-behavior: none;
     -webkit-touch-callout: none;
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -29,41 +59,43 @@
 
   #root {
     height: 100%;
-    height: 100dvh;
     width: 100%;
-    width: 100dvw;
     overflow: hidden;
     display: flex;
     flex-direction: column;
   }
 }
 
-/* Mobile App Layout & Viewport Standards */
-.app-viewport {
-  height: 100%;
-  height: 100dvh;
-  width: 100%;
-  max-width: 100%;
-  display: flex;
-  overflow: hidden;
-  position: relative;
+/* Fallback utilities for non-standard classes audited in Section 30 */
+.backdrop-blur-xs {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
-/* Glassmorphism Design Tokens & Smooth Transitions */
+.backdrop-blur-2xs {
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.shadow-2xs {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+}
+
+.rounded-bl-xs {
+  border-bottom-left-radius: 4px;
+}
+
+.rounded-br-xs {
+  border-bottom-right-radius: 4px;
+}
+
+/* Glassmorphism Design Tokens */
 .glass-panel {
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(16px) saturate(180%);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.6);
   box-shadow: 0 10px 30px -5px rgba(244, 114, 182, 0.1);
-}
-
-.glass-panel-dark {
-  background: rgba(17, 24, 33, 0.88);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.4);
 }
 
 .glass-panel-male {
@@ -80,7 +112,7 @@
   -webkit-backdrop-filter: blur(14px);
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.25);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .glass-card-male:hover {
@@ -111,7 +143,7 @@
   -webkit-backdrop-filter: blur(14px);
   border: 1px solid rgba(253, 232, 238, 0.8);
   box-shadow: 0 4px 20px -2px rgba(244, 63, 94, 0.05);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .glass-card-female:hover {
@@ -131,12 +163,6 @@
   box-shadow: 0 0 12px rgba(236, 72, 153, 0.3);
 }
 
-.bg-female-canvas {
-  background: radial-gradient(circle at 10% 15%, rgba(254, 205, 211, 0.35) 0%, transparent 40%),
-              radial-gradient(circle at 90% 85%, rgba(245, 208, 254, 0.3) 0%, transparent 45%),
-              linear-gradient(180deg, #FFF7F9 0%, #FFF2F5 50%, #FDF4F8 100%);
-}
-
 .story-ring-male {
   background: linear-gradient(135deg, #a855f7 0%, #3b82f6 50%, #06b6d4 100%);
   padding: 2.5px;
@@ -144,25 +170,17 @@
   box-shadow: 0 0 14px rgba(59, 130, 246, 0.35);
 }
 
-.glass-card {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+.bg-female-canvas {
+  background: radial-gradient(circle at 10% 15%, rgba(254, 205, 211, 0.35) 0%, transparent 40%),
+              radial-gradient(circle at 90% 85%, rgba(245, 208, 254, 0.3) 0%, transparent 45%),
+              linear-gradient(180deg, #FFF7F9 0%, #FFF2F5 50%, #FDF4F8 100%);
 }
 
-.glass-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 28px -6px rgba(244, 114, 182, 0.18);
-  background: rgba(255, 255, 255, 0.9);
-}
-
-/* Smooth Spring Animations */
+/* Animations with 0.22, 1, 0.36, 1 Easing */
 @keyframes modalPop {
   0% {
     opacity: 0;
-    transform: scale(0.92) translateY(12px);
+    transform: scale(0.96) translateY(8px);
   }
   100% {
     opacity: 1;
@@ -173,7 +191,7 @@
 @keyframes slideUpSmooth {
   0% {
     opacity: 0;
-    transform: translateY(24px);
+    transform: translateY(16px);
   }
   100% {
     opacity: 1;
@@ -184,7 +202,7 @@
 @keyframes fadeInScale {
   0% {
     opacity: 0;
-    transform: scale(0.96);
+    transform: scale(0.97);
   }
   100% {
     opacity: 1;
@@ -192,55 +210,44 @@
   }
 }
 
-@keyframes floatSlow {
-  0%, 100% {
-    transform: translateY(0px);
+@keyframes toastSlide {
+  0% {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.96);
   }
-  50% {
-    transform: translateY(-4px);
-  }
-}
-
-@keyframes pulseGlow {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(244, 114, 182, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 0 8px rgba(244, 114, 182, 0);
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
 .animate-modalPop {
-  animation: modalPop 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: modalPop 0.26s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .animate-slideUpSmooth {
-  animation: slideUpSmooth 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: slideUpSmooth 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .animate-fadeInScale {
-  animation: fadeInScale 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fadeInScale 0.22s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-.animate-floatSlow {
-  animation: floatSlow 4s ease-in-out infinite;
+.animate-toast {
+  animation: toastSlide 0.24s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-.animate-pulseGlow {
-  animation: pulseGlow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-/* Smooth Interactive Micro-Animations */
+/* Buttons Micro-interactions */
 .btn-bounce {
-  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease, opacity 0.2s ease, background-color 0.2s ease;
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.18s ease, opacity 0.18s ease;
 }
 
 .btn-bounce:hover {
-  transform: translateY(-1.5px) scale(1.02);
+  transform: translateY(-1px);
 }
 
 .btn-bounce:active {
-  transform: translateY(1px) scale(0.96);
+  transform: translateY(0.5px) scale(0.97);
 }
 
 /* Safe Area Paddings for Mobile Browsers & Notches */
@@ -259,7 +266,7 @@
   padding-right: max(0.5rem, env(safe-area-inset-right));
 }
 
-/* Cute soft scrollbar */
+/* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 4px;
   height: 4px;
@@ -270,10 +277,20 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(244, 114, 182, 0.25);
+  background: rgba(148, 163, 184, 0.25);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(244, 114, 182, 0.45);
+  background: rgba(148, 163, 184, 0.45);
+}
+
+/* Reduced motion accessibility (Section 42) */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

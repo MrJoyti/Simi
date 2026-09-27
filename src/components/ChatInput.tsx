@@ -39,6 +39,8 @@ export const ChatInput: React.FC = () => {
     theme,
     triggerConfetti,
     isOnline,
+    simiTheme,
+    showToast,
   } = useChat();
 
   const [text, setText] = useState<string>(() => {
@@ -310,11 +312,11 @@ export const ChatInput: React.FC = () => {
     const file = e.target.files?.[0];
     if (file) {
       if (!file.type.startsWith('image/')) {
-        alert('Please choose an image file.');
+        showToast('Please choose an image file.', 'error');
         return;
       }
       if (file.size > 10 * 1024 * 1024) {
-        alert('Please select an image under 10MB.');
+        showToast('Please select an image under 10MB.', 'error');
         return;
       }
 
@@ -387,8 +389,8 @@ export const ChatInput: React.FC = () => {
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  const { isFemale, isMale } = resolveSimiTheme(currentUser);
-  const isMidnight = isMale && theme === 'midnight';
+  const isMidnight = simiTheme.isMale;
+  const isFemale = simiTheme.isFemale;
 
   return (
     <div className={`relative p-2.5 sm:p-3.5 border-t backdrop-blur-md ${

@@ -7,9 +7,9 @@ import { CuteAvatar } from '../utils/avatars';
 const ICON_SUGGESTIONS = ['🌸', '🐾', '☕', '🎮', '🎨', '🧁', '📚', '🌙', '🍓', '🧋', '🧸', '✨'];
 
 export const CreateRoomModal: React.FC = () => {
-  const { showCreateRoomModal, setShowCreateRoomModal, createGroupRoom, triggerConfetti, buddies, theme } = useChat();
+  const { showCreateRoomModal, setShowCreateRoomModal, createGroupRoom, triggerConfetti, buddies, simiTheme } = useChat();
 
-  const isMidnight = theme === 'midnight';
+  const isMidnight = simiTheme.isMale;
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [icon, setIcon] = useState('💬');

@@ -15,13 +15,13 @@ import {
   BuddyRequestState,
   RelationshipState,
   SocialFeedPost,
+  ToastType,
+  ToastItem,
 } from '../types/chat';
-import { MALE_DEMO_POSTS } from '../utils/maleDemoData';
-import { FEMALE_DEMO_POSTS } from '../utils/femaleDemoData';
 import { Capacitor } from '@capacitor/core';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { sounds } from '../utils/sound';
-import { THEMES } from '../utils/theme';
+import { THEMES, resolveSimiTheme, SimiThemeResolution } from '../utils/theme';
 import confetti from 'canvas-confetti';
 import { db, auth, rtdb } from '../firebase';
 import {
@@ -199,6 +199,12 @@ interface ChatContextType {
   ) => Promise<void>;
   cancelScheduledMessage: (schedId: string) => Promise<void>;
   sendScheduledMessageNow: (schedId: string) => Promise<void>;
+
+  // --- Global Toast & Centralized Theme ---
+  toasts: ToastItem[];
+  showToast: (message: string, type?: ToastType, duration?: number) => void;
+  dismissToast: (id: string) => void;
+  simiTheme: SimiThemeResolution;
 }
 
 const ChatContext = createContext<ChatContextType | null>(null);
@@ -262,17 +268,35 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [showMediaHubModal, setShowMediaHubModal] = useState<boolean>(false);
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
 
-  // Social feed posts state (persisted locally with fallback based on user gender)
+  // Toast Notification System (Section 35)
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+
+  const dismissToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  const showToast = useCallback((message: string, type: ToastType = 'info', duration: number = 3200) => {
+    const id = `toast_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const newToast: ToastItem = { id, message, type, duration };
+    setToasts((prev) => [...prev, newToast]);
+
+    if (duration > 0) {
+      setTimeout(() => {
+        dismissToast(id);
+      }, duration);
+    }
+  }, [dismissToast]);
+
+  // Social feed posts state (persisted locally with clean empty array fallback - Section 9 & 15)
   const [feedPosts, setFeedPosts] = useState<SocialFeedPost[]>(() => {
     try {
       const cachedProfile = localStorage.getItem('mochichat_profile_cache');
       const isMale = cachedProfile ? JSON.parse(cachedProfile)?.gender === 'male' : false;
       const key = isMale ? 'simi_male_feed_posts' : 'simi_female_feed_posts';
-      const fallback = isMale ? MALE_DEMO_POSTS : FEMALE_DEMO_POSTS;
       const saved = localStorage.getItem(key);
-      return saved ? JSON.parse(saved) : fallback;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return FEMALE_DEMO_POSTS;
+      return [];
     }
   });
 
@@ -290,10 +314,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isPublic: true,
       content: postData.content,
       images: postData.images || [],
-      likes: 1,
+      likes: 0,
       commentsCount: 0,
       sharesCount: 0,
-      isLiked: true,
+      isLiked: false,
       isSaved: false,
     };
     setFeedPosts((prev) => {
@@ -345,6 +369,19 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sounds.setEnabled(currentUser.soundEnabled ?? true);
     }
   }, [currentUser]);
+
+  // Centralized Theme Resolution & CSS Variable Root Sync (Section 2 & 26)
+  const theme: ThemeColor = currentUser?.gender === 'male'
+    ? 'midnight'
+    : (currentUser?.theme && currentUser.theme !== 'midnight' ? currentUser.theme : 'strawberry');
+
+  const simiTheme = useMemo(() => {
+    return resolveSimiTheme(currentUser, theme);
+  }, [currentUser, theme]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-simi-theme', simiTheme.isMale ? 'male' : 'female');
+  }, [simiTheme.isMale]);
 
   // Register service worker on mount
   useEffect(() => {
@@ -874,11 +911,11 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!user) return;
 
       if ((user.blockedUserIds || []).includes(targetBuddy.id)) {
-        alert('Cannot call a user you have blocked.');
+        showToast('Cannot call a user you have blocked.', 'warning');
         return;
       }
       if ((targetBuddy.blockedUserIds || []).includes(user.id)) {
-        alert('This user is not available for calls.');
+        showToast('This user is not available for calls.', 'warning');
         return;
       }
 
@@ -1898,11 +1935,11 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!user || user.id === targetUser.id) return;
 
       if ((user.blockedUserIds || []).includes(targetUser.id)) {
-        alert('You have blocked this user.');
+        showToast('You have blocked this user.', 'warning');
         return;
       }
       if ((targetUser.blockedUserIds || []).includes(user.id)) {
-        alert('This user is not available.');
+        showToast('This user is not available.', 'warning');
         return;
       }
       if (getRelationship(targetUser.id) === 'FRIENDS') {
@@ -2182,11 +2219,11 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!user || user.id === targetUser.id) return;
 
       if ((user.blockedUserIds || []).includes(targetUser.id)) {
-        alert('You have blocked this user.');
+        showToast('You have blocked this user.', 'warning');
         return;
       }
       if ((targetUser.blockedUserIds || []).includes(user.id)) {
-        alert('This user is not available.');
+        showToast('This user is not available.', 'warning');
         return;
       }
 
@@ -2353,12 +2390,12 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const otherId = currentRoom.participantIds?.find((id) => id !== user.id);
         if (otherId) {
           if ((user.blockedUserIds || []).includes(otherId)) {
-            alert('Cannot send messages to a user you have blocked.');
+            showToast('Cannot send messages to a user you have blocked.', 'warning');
             return;
           }
           const otherUser = activeUsers.find((u) => u.id === otherId);
           if (otherUser && (otherUser.blockedUserIds || []).includes(user.id)) {
-            alert('You cannot send messages to this user.');
+            showToast('You cannot send messages to this user.', 'warning');
             return;
           }
         }
@@ -2587,10 +2624,6 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return activeUsers.filter((u) => u.id !== currentUser.id && getRelationship(u.id) === 'FRIENDS');
   }, [currentUser?.id, activeUsers, getRelationship]);
 
-  const theme: ThemeColor = currentUser?.gender === 'male'
-    ? 'midnight'
-    : (currentUser?.theme && currentUser.theme !== 'midnight' ? currentUser.theme : 'strawberry');
-
   const setTheme = useCallback(
     (t: ThemeColor) => {
       if (currentUser?.gender === 'male') return; // Male theme locked to midnight
@@ -2716,6 +2749,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         scheduleMessage,
         cancelScheduledMessage,
         sendScheduledMessageNow,
+        toasts,
+        showToast,
+        dismissToast,
+        simiTheme,
       }}
     >
       {children}

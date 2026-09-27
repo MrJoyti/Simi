@@ -12,8 +12,8 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
   onSendVoice,
   onCancel,
 }) => {
-  const { theme } = useChat();
-  const isMale = theme === 'midnight';
+  const { simiTheme } = useChat();
+  const isMale = simiTheme.isMale;
 
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [duration, setDuration] = useState<number>(0);

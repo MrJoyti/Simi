@@ -30,10 +30,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     handleSignOut,
     updateProfile,
     theme,
+    simiTheme,
+    showToast,
   } = useChat();
 
-  const { isFemale, isMale } = resolveSimiTheme(currentUser);
-  const isMidnight = isMale && (theme === 'midnight' || currentUser?.gender === 'male');
+  const isMidnight = simiTheme.isMale;
+  const isFemale = simiTheme.isFemale;
 
   if (!isOpen || !currentUser) return null;
 
@@ -63,7 +65,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         const next = currentUser.privacyVisibility === 'buddies' ? 'public' : 'buddies';
         updateProfile({ privacyVisibility: next });
         sounds.playClick();
-        alert(`Privacy visibility updated to: ${next}`);
+        showToast(`Privacy visibility updated to: ${next}`, 'info');
       },
     },
     {
@@ -76,7 +78,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         : 'bg-amber-100/80 text-amber-600 border border-amber-200/60',
       action: () => {
         sounds.playClick();
-        alert('Push notifications are active for your device!');
+        showToast('Push notifications are active for your device!', 'success');
       },
     },
     {
@@ -89,7 +91,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         : 'bg-purple-100/80 text-purple-600 border border-purple-200/60',
       action: () => {
         sounds.playClick();
-        alert(isFemale ? 'Simi Rose Blossom theme is active.' : 'Simi Male Midnight theme is active with cyan/blue accents.');
+        showToast(
+          isFemale
+            ? 'Simi Rose Blossom theme is active.'
+            : 'Simi Male Midnight theme is active with cyan/blue accents.',
+          'info'
+        );
       },
     },
     {
@@ -102,7 +109,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         : 'bg-sky-100/80 text-sky-600 border border-sky-200/60',
       action: () => {
         sounds.playClick();
-        alert('Cache storage is clean & optimized.');
+        showToast('Cache storage is clean & optimized.', 'success');
       },
     },
     {
@@ -115,7 +122,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         : 'bg-rose-100/80 text-rose-600 border border-rose-200/60',
       action: () => {
         sounds.playClick();
-        alert(isFemale ? 'Simi v2.4 (Female Experience) - Crafted with care.' : 'Simi v2.4 (Male Experience) - Built with passion.');
+        showToast(
+          isFemale
+            ? 'Simi v2.4 (Female Experience) - Crafted with care.'
+            : 'Simi v2.4 (Male Experience) - Built with passion.',
+          'info'
+        );
       },
     },
   ];
