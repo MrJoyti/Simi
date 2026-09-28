@@ -130,6 +130,8 @@ export interface ChatRoom {
   unreadCount?: number;
   lastMessage?: string;
   lastMessageTime?: number;
+  lastSenderId?: string;
+  lastSenderName?: string;
   createdAt?: number;
   isPinnedBy?: string[]; // user IDs who pinned this chat room
   isFavoriteBy?: string[]; // user IDs who favorited this chat room

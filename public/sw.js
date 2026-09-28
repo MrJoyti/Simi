@@ -1,11 +1,12 @@
 // Service Worker for Simi PWA, Offline Cache & Push Notifications
-const CACHE_NAME = 'simi-app-v6';
+const CACHE_NAME = 'simi-app-v7';
 
 const STATIC_ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/manifest.json',
   '/favicon.ico',
+  '/simi-logo.png',
 ];
 
 self.addEventListener('install', (event) => {
@@ -95,8 +96,8 @@ self.addEventListener('push', (event) => {
   let data = {
     title: 'Simi ✨',
     body: 'You have a new message!',
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    icon: '/simi-logo.png',
+    badge: '/simi-logo.png',
     tag: 'simi-notification',
   };
 
@@ -110,9 +111,10 @@ self.addEventListener('push', (event) => {
 
   const options = {
     body: data.body,
-    icon: data.icon || '/icon-192.png',
-    badge: data.badge || '/icon-192.png',
+    icon: data.icon || '/simi-logo.png',
+    badge: data.badge || '/simi-logo.png',
     vibrate: [100, 50, 100],
+    tag: data.tag || 'simi-notification',
     data: {
       url: data.url || '/',
       dateOfArrival: Date.now(),
@@ -131,15 +133,20 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
+  const targetUrl = event.notification.data?.url || '/';
+
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
         if (client.url && 'focus' in client) {
+          if (client.navigate && targetUrl && targetUrl !== '/') {
+            client.navigate(targetUrl);
+          }
           return client.focus();
         }
       }
       if (self.clients.openWindow) {
-        return self.clients.openWindow(event.notification.data?.url || '/');
+        return self.clients.openWindow(targetUrl);
       }
     })
   );

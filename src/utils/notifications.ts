@@ -1,5 +1,15 @@
 // Utilities for Web Push & Browser Notifications
 
+export interface PushNotificationOptions {
+  body?: string;
+  icon?: string;
+  badge?: string;
+  tag?: string;
+  url?: string;
+  force?: boolean;
+  requireInteraction?: boolean;
+}
+
 // Check if browser notifications are supported
 export function isNotificationSupported(): boolean {
   return typeof window !== 'undefined' && 'Notification' in window;
@@ -9,18 +19,6 @@ export function isNotificationSupported(): boolean {
 export function getNotificationPermission(): NotificationPermission {
   if (!isNotificationSupported()) return 'denied';
   return Notification.permission;
-}
-
-// Request permission from user
-export async function requestNotificationPermission(): Promise<NotificationPermission> {
-  if (!isNotificationSupported()) return 'denied';
-  try {
-    const permission = await Notification.requestPermission();
-    return permission;
-  } catch (err) {
-    console.warn('Error requesting notification permission:', err);
-    return 'denied';
-  }
 }
 
 // Register service worker if available
@@ -38,41 +36,73 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
   }
 }
 
+// Request permission from user
+export async function requestNotificationPermission(): Promise<NotificationPermission> {
+  if (!isNotificationSupported()) return 'denied';
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      await registerServiceWorker();
+    }
+    return permission;
+  } catch (err) {
+    console.warn('Error requesting notification permission:', err);
+    return 'denied';
+  }
+}
+
 // Display an in-browser push notification
-export async function showPushNotification(title: string, options?: {
-  body?: string;
-  icon?: string;
-  tag?: string;
-  url?: string;
-}) {
+export async function showPushNotification(title: string, options?: PushNotificationOptions) {
   if (!isNotificationSupported()) return;
   if (Notification.permission !== 'granted') return;
 
-  // If document is focused and visible, user is already looking at it
-  if (typeof document !== 'undefined' && document.hasFocus && document.hasFocus()) {
+  // Unless force is specified, skip if the document is actively focused and visible
+  if (!options?.force && typeof document !== 'undefined' && document.hasFocus && document.hasFocus()) {
     return;
   }
 
+  const iconUrl = options?.icon || '/simi-logo.png';
+  const badgeUrl = options?.badge || '/simi-logo.png';
+  const tag = options?.tag || 'simi-msg';
+  const targetUrl = options?.url || '/';
+
   try {
     if ('serviceWorker' in navigator) {
-      const reg = await navigator.serviceWorker.getRegistration();
-      if (reg && reg.showNotification) {
-        await reg.showNotification(title, {
-          body: options?.body,
-          icon: options?.icon || '🌸',
-          tag: options?.tag || 'mochichat-msg',
-          data: { url: options?.url || '/' },
-        });
-        return;
+      try {
+        const reg = await navigator.serviceWorker.ready.catch(() => navigator.serviceWorker.getRegistration());
+        if (reg && reg.showNotification) {
+          await reg.showNotification(title, {
+            body: options?.body,
+            icon: iconUrl,
+            badge: badgeUrl,
+            tag,
+            requireInteraction: options?.requireInteraction ?? false,
+            data: { url: targetUrl },
+          });
+          return;
+        }
+      } catch (swErr) {
+        console.warn('ServiceWorker showNotification issue, falling back to Notification API:', swErr);
       }
     }
 
-    // Direct Notification fallback
-    new Notification(title, {
-      body: options?.body,
-      icon: options?.icon,
-      tag: options?.tag,
-    });
+    // Direct Notification API fallback
+    if (typeof Notification !== 'undefined') {
+      const notification = new Notification(title, {
+        body: options?.body,
+        icon: iconUrl,
+        tag,
+        requireInteraction: options?.requireInteraction ?? false,
+      });
+
+      notification.onclick = () => {
+        window.focus();
+        if (targetUrl && targetUrl !== '/') {
+          window.location.href = targetUrl;
+        }
+        notification.close();
+      };
+    }
   } catch (err) {
     console.warn('Could not show push notification:', err);
   }

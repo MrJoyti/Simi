@@ -264,6 +264,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [rawRooms, setRawRooms] = useState<ChatRoom[]>([]);
   const [roomUnreadCounts, setRoomUnreadCounts] = useState<Record<string, number>>({});
   const [currentRoomId, setCurrentRoomIdState] = useState<string>('');
+  const currentRoomIdRef = useRef<string>(currentRoomId);
+  useEffect(() => {
+    currentRoomIdRef.current = currentRoomId;
+  }, [currentRoomId]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [activeUsers, setActiveUsers] = useState<UserProfile[]>([]);
   const [typingUsers, setTypingUsers] = useState<TypingIndicatorUser[]>([]);
@@ -459,8 +463,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         spread: 50,
         origin: { y: 0.6 },
       });
-      showPushNotification('Simi Notifications Active', {
+      await showPushNotification('Simi Notifications Active 🔔', {
         body: 'You will now receive notifications when friends message or call you!',
+        force: true,
       });
     }
     return result;
@@ -716,6 +721,26 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             type: roomData.type || (roomData.isDirect ? 'direct' : 'group'),
             participantIds: roomData.participantIds || [],
           });
+
+          // If a direct chat receives a new message from a buddy and the user isn't actively viewing it
+          if (
+            change.type === 'modified' &&
+            roomData.lastSenderId &&
+            roomData.lastSenderId !== currentUserId
+          ) {
+            const isDifferentRoom = currentRoomIdRef.current !== change.doc.id;
+            const isTabBackground = typeof document !== 'undefined' && (document.hidden || !document.hasFocus());
+            if (isDifferentRoom || isTabBackground) {
+              const buddyName = roomData.name || 'Friend';
+              const lastMsgText = roomData.lastMessage || 'Sent a new message';
+              sounds.playReceive();
+              showPushNotification(`${buddyName} on Simi`, {
+                body: lastMsgText,
+                tag: `room-${change.doc.id}`,
+                url: '/',
+              });
+            }
+          }
         }
       });
       updateCombinedRooms();
@@ -862,6 +887,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             showPushNotification(`Incoming ${isVideo ? 'Video' : 'Audio'} Call from ${activeFound.callerName}`, {
               body: 'Tap to open Simi and answer the call!',
               tag: `call-${activeFound.id}`,
+              force: true,
+              requireInteraction: true,
             });
           }
         }
@@ -1582,14 +1609,36 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   const [canonicalRelationships, setCanonicalRelationships] = useState<Map<string, RelationshipDoc>>(new Map());
+  const knownIncomingRequestsRef = useRef<Set<string>>(new Set());
+  const isInitialRelationshipsRef = useRef<boolean>(true);
 
   // Subscribe to canonical relationships
   useEffect(() => {
     if (!currentUser?.id) {
       setCanonicalRelationships(new Map());
+      knownIncomingRequestsRef.current.clear();
+      isInitialRelationshipsRef.current = true;
       return;
     }
-    const unsub = subscribeUserRelationships(currentUser.id, (map) => {
+    const currentUid = currentUser.id;
+    const unsub = subscribeUserRelationships(currentUid, (map) => {
+      // Notify on new incoming buddy requests after initial load
+      const currentIncoming = new Set<string>();
+      map.forEach((rel, pairId) => {
+        if (rel.state === 'pending' && rel.requestedBy !== currentUid) {
+          currentIncoming.add(pairId);
+          if (!isInitialRelationshipsRef.current && !knownIncomingRequestsRef.current.has(pairId)) {
+            sounds.playReceive();
+            showPushNotification('New Buddy Request 🤝', {
+              body: 'Someone sent you a buddy request on Simi! Tap to view.',
+              tag: `buddy-request-${pairId}`,
+              url: '/',
+            });
+          }
+        }
+      });
+      knownIncomingRequestsRef.current = currentIncoming;
+      isInitialRelationshipsRef.current = false;
       setCanonicalRelationships(map);
     });
     return () => unsub();

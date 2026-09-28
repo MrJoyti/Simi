@@ -17,6 +17,7 @@ import {
   VolumeX,
 } from 'lucide-react';
 import { sounds } from '../utils/sound';
+import { showPushNotification } from '../utils/notifications';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -32,6 +33,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     theme,
     simiTheme,
     showToast,
+    enablePushNotifications,
+    notificationPermission,
   } = useChat();
 
   const isMidnight = simiTheme.isMale;
@@ -70,15 +73,52 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     },
     {
       id: 'notifications',
-      title: 'Notifications',
-      subtitle: 'Messages, calls, activity',
+      title: 'Push Notifications',
+      subtitle:
+        notificationPermission === 'granted'
+          ? 'Active for calls & messages (tap to test)'
+          : notificationPermission === 'denied'
+          ? 'Blocked in browser site permissions'
+          : 'Tap to enable push notifications',
       icon: Bell,
       color: isMidnight
         ? 'bg-amber-600/20 text-amber-400 border border-amber-500/30'
         : 'bg-amber-100/80 text-amber-600 border border-amber-200/60',
-      action: () => {
+      badge: (
+        <span
+          className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+            notificationPermission === 'granted'
+              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+              : notificationPermission === 'denied'
+              ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+              : 'bg-blue-500/20 text-blue-400 border border-blue-500/30 animate-pulse'
+          }`}
+        >
+          {notificationPermission === 'granted'
+            ? 'Active'
+            : notificationPermission === 'denied'
+            ? 'Blocked'
+            : 'Enable'}
+        </span>
+      ),
+      action: async () => {
         sounds.playClick();
-        showToast('Push notifications are active for your device!', 'success');
+        if (notificationPermission === 'granted') {
+          await showPushNotification('Simi Notifications Active 🔔', {
+            body: 'You are receiving real-time notifications for messages and calls!',
+            force: true,
+          });
+          showToast('Test notification sent to your system!', 'success');
+        } else if (notificationPermission === 'denied') {
+          showToast('Notifications are blocked. Please allow notifications in your browser address bar/settings.', 'warning', 4000);
+        } else {
+          const res = await enablePushNotifications();
+          if (res === 'granted') {
+            showToast('Push notifications successfully enabled!', 'success');
+          } else if (res === 'denied') {
+            showToast('Notification permission was denied.', 'warning');
+          }
+        }
       },
     },
     {
@@ -235,9 +275,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   </div>
                 </div>
 
-                <ChevronRight className={`w-4 h-4 group-hover:translate-x-0.5 transition-all shrink-0 ${
-                  isMidnight ? 'text-slate-500 group-hover:text-slate-300' : 'text-slate-400 group-hover:text-rose-500'
-                }`} />
+                <div className="flex items-center gap-2 shrink-0">
+                  {'badge' in sec && sec.badge ? sec.badge : null}
+                  <ChevronRight className={`w-4 h-4 group-hover:translate-x-0.5 transition-all shrink-0 ${
+                    isMidnight ? 'text-slate-500 group-hover:text-slate-300' : 'text-slate-400 group-hover:text-rose-500'
+                  }`} />
+                </div>
               </button>
             );
           })}

@@ -35,6 +35,8 @@ export const VerseView: React.FC = () => {
     setShowCreatePostModal,
     showToast,
     simiTheme,
+    notificationPermission,
+    enablePushNotifications,
   } = useChat();
 
   const isMale = simiTheme.isMale;
@@ -210,19 +212,31 @@ export const VerseView: React.FC = () => {
             </button>
 
             <button
-              onClick={() => {
+              onClick={async () => {
                 sounds.playClick();
-                showToast('You are up to date on all notifications.', 'info');
+                if (notificationPermission !== 'granted') {
+                  const res = await enablePushNotifications();
+                  if (res === 'granted') {
+                    showToast('Push notifications enabled successfully! 🔔', 'success');
+                  } else if (res === 'denied') {
+                    showToast('Notifications blocked. Enable them in browser site settings.', 'warning');
+                  }
+                } else {
+                  showToast('Push notifications are active for all messages and calls.', 'info');
+                }
               }}
               className={`w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-95 relative ${
                 isMale
                   ? 'bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700'
                   : 'bg-pink-50/80 border border-pink-100 text-slate-600 hover:text-rose-500 hover:bg-pink-100'
               }`}
-              title="Notifications"
+              title={notificationPermission === 'granted' ? 'Notifications active' : 'Enable notifications'}
               aria-label="Notifications"
             >
               <Bell className="w-4 h-4" />
+              {notificationPermission !== 'granted' && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-blue-500 animate-pulse ring-2 ring-slate-900" />
+              )}
             </button>
 
             <button
