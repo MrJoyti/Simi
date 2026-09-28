@@ -26,6 +26,7 @@ import { VerseView } from './components/VerseView';
 import { AuthModal } from './components/AuthModal';
 import { ConversationInfoDrawer } from './components/ConversationInfoDrawer';
 import { SimiToastContainer } from './components/SimiToast';
+import { NotificationModal } from './components/NotificationModal';
 import { THEMES } from './utils/theme';
 
 const ChatInterface: React.FC = () => {
@@ -46,6 +47,8 @@ const ChatInterface: React.FC = () => {
     setShowMediaHubModal,
     showSettingsModal,
     setShowSettingsModal,
+    showNotificationModal,
+    setShowNotificationModal,
     addFeedPost,
     simiTheme,
   } = useChat();
@@ -163,6 +166,10 @@ const ChatInterface: React.FC = () => {
       <SettingsModal
         isOpen={showSettingsModal}
         onClose={() => setShowSettingsModal(false)}
+      />
+      <NotificationModal
+        isOpen={showNotificationModal}
+        onClose={() => setShowNotificationModal(false)}
       />
       <VideoCallModal />
       <ConversationInfoDrawer

@@ -34,6 +34,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
   const [images, setImages] = useState<string[]>([]);
   const [selectedMood, setSelectedMood] = useState<string>('');
   const [selectedLocation, setSelectedLocation] = useState<string>('');
+  const [shareToStory, setShareToStory] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen || !currentUser) return null;
@@ -67,19 +68,23 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
       });
     }
 
-    // Also share to story if user has images or text
-    try {
-      await addStory({
-        text: text.trim() || undefined,
-        imageUrl: images[0] || undefined,
-        gradientBg: 'from-slate-950 via-blue-950 to-slate-900',
-      });
-    } catch {
-      // ignore
+    // Only share to story if user explicitly chose to
+    if (shareToStory) {
+      try {
+        await addStory({
+          text: text.trim() || undefined,
+          imageUrl: images[0] || undefined,
+          gradientBg: 'from-slate-950 via-blue-950 to-slate-900',
+        });
+      } catch {
+        // ignore
+      }
     }
 
     triggerConfetti();
     setText('');
+    setImages([]);
+    setShareToStory(false);
     onClose();
   };
 
@@ -195,6 +200,34 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
             className="hidden"
             onChange={handleAddImage}
           />
+
+          {/* Optional Story Cross-Post Toggle */}
+          <div
+            onClick={() => {
+              sounds.playClick();
+              setShareToStory(!shareToStory);
+            }}
+            className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-colors ${
+              isMidnight
+                ? shareToStory ? 'bg-blue-950/30 border-blue-500/40 text-blue-200' : 'bg-slate-900/40 border-slate-800/60 text-slate-400'
+                : shareToStory ? 'bg-pink-50 border-rose-200 text-rose-700' : 'bg-white border-pink-100 text-slate-500'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              <div>
+                <span className="text-xs font-bold block">Also share to 24h Story</span>
+                <span className="text-[10px] opacity-75 block">Post will also be visible on your story feed</span>
+              </div>
+            </div>
+            <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${
+              shareToStory
+                ? isMidnight ? 'bg-blue-600 border-blue-500 text-white' : 'bg-rose-500 border-rose-500 text-white'
+                : isMidnight ? 'border-slate-700 bg-slate-800' : 'border-slate-300 bg-white'
+            }`}>
+              {shareToStory && <span className="text-xs font-black">✓</span>}
+            </div>
+          </div>
 
           {/* Action List Items */}
           <div className="space-y-1.5 pt-2">

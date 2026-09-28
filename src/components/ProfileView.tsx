@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { sounds } from '../utils/sound';
 import { uploadImageToCloudinary } from '../utils/cloudinary';
+import { StoryViewerModal } from './StoryViewerModal';
 
 export const ProfileView: React.FC = () => {
   const {
@@ -43,6 +44,7 @@ export const ProfileView: React.FC = () => {
 
   const [copiedId, setCopiedId] = useState(false);
   const [activeTab, setActiveTab] = useState<'posts' | 'moments' | 'about' | 'friends' | 'media'>('posts');
+  const [activeStoryIndex, setActiveStoryIndex] = useState<number | null>(null);
 
   const isMale = simiTheme.isMale;
 
@@ -374,12 +376,12 @@ export const ProfileView: React.FC = () => {
             </div>
 
             {/* Real user stories preview */}
-            {myStories.map((story) => (
+            {myStories.map((story, idx) => (
               <div
                 key={story.id}
                 onClick={() => {
                   sounds.playClick();
-                  showToast('Viewing story', 'info');
+                  setActiveStoryIndex(idx);
                 }}
                 className="flex flex-col items-center shrink-0 cursor-pointer group active:scale-95 transition-transform"
               >
@@ -397,7 +399,7 @@ export const ProfileView: React.FC = () => {
                 <span className={`text-[10px] mt-1 font-bold max-w-[54px] truncate text-center ${
                   isMale ? 'text-slate-300' : 'text-slate-700'
                 }`}>
-                  Story
+                  {story.text ? story.text.slice(0, 10) : 'Story'}
                 </span>
               </div>
             ))}
@@ -495,10 +497,14 @@ export const ProfileView: React.FC = () => {
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-2.5">
-                {myStories.map((story) => (
+                {myStories.map((story, idx) => (
                   <div
                     key={story.id}
-                    className={`aspect-video rounded-2xl overflow-hidden border relative ${
+                    onClick={() => {
+                      sounds.playClick();
+                      setActiveStoryIndex(idx);
+                    }}
+                    className={`aspect-video rounded-2xl overflow-hidden border relative cursor-pointer active:scale-95 transition-transform ${
                       isMale ? 'border-slate-800/80 bg-slate-900' : 'border-pink-100/90 bg-white shadow-2xs'
                     }`}
                   >
@@ -620,6 +626,15 @@ export const ProfileView: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Full Screen Story Viewer Modal */}
+      {activeStoryIndex !== null && myStories.length > 0 && (
+        <StoryViewerModal
+          stories={myStories}
+          initialIndex={activeStoryIndex}
+          onClose={() => setActiveStoryIndex(null)}
+        />
+      )}
     </div>
   );
 };

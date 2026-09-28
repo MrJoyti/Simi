@@ -15,6 +15,7 @@ import {
   BuddyRequestState,
   RelationshipState,
   SocialFeedPost,
+  PostComment,
   ToastType,
   ToastItem,
 } from '../types/chat';
@@ -188,8 +189,13 @@ interface ChatContextType {
   setShowSettingsModal: (show: boolean) => void;
   feedPosts: SocialFeedPost[];
   addFeedPost: (post: { content: string; images?: string[] }) => void;
+  editFeedPost: (postId: string, newContent: string) => Promise<void>;
+  deleteFeedPost: (postId: string) => Promise<void>;
+  addPostComment: (postId: string, content: string) => Promise<void>;
   toggleLikePost: (postId: string) => void;
   toggleSavePost: (postId: string) => void;
+  showNotificationModal: boolean;
+  setShowNotificationModal: (show: boolean) => void;
   triggerConfetti: () => void;
   activeMobileTab: 'chats' | 'spaces' | 'friends' | 'profile';
   setActiveMobileTab: (tab: 'chats' | 'spaces' | 'friends' | 'profile') => void;
@@ -304,6 +310,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [showCreatePostModal, setShowCreatePostModal] = useState<boolean>(false);
   const [showMediaHubModal, setShowMediaHubModal] = useState<boolean>(false);
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
+  const [showNotificationModal, setShowNotificationModal] = useState<boolean>(false);
 
   // Toast Notification System (Section 35)
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -418,6 +425,90 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       })
     );
   }, []);
+
+  const editFeedPost = useCallback(async (postId: string, newContent: string) => {
+    sounds.playClick();
+    const trimmed = newContent.trim();
+    if (!trimmed) return;
+    setFeedPosts((prev) =>
+      prev.map((p) => {
+        if (p.id !== postId) return p;
+        return {
+          ...p,
+          content: trimmed,
+          updatedAt: Date.now(),
+        };
+      })
+    );
+    try {
+      const postRef = doc(db, 'posts', postId);
+      await updateDoc(postRef, {
+        content: trimmed,
+        updatedAt: Date.now(),
+      });
+      showToast('Post updated successfully!', 'success');
+    } catch (err) {
+      console.warn('Error updating post in Firestore:', err);
+    }
+  }, [showToast]);
+
+  const deleteFeedPost = useCallback(async (postId: string) => {
+    sounds.playClick();
+    setFeedPosts((prev) => prev.filter((p) => p.id !== postId));
+    try {
+      const postRef = doc(db, 'posts', postId);
+      await deleteDoc(postRef);
+      showToast('Post deleted', 'info');
+    } catch (err) {
+      console.warn('Error deleting post in Firestore:', err);
+    }
+  }, [showToast]);
+
+  const addPostComment = useCallback(async (postId: string, content: string) => {
+    const user = currentUserRef.current;
+    const trimmed = content.trim();
+    if (!user || !trimmed) return;
+    sounds.playSend();
+
+    const newComment: PostComment = {
+      id: `cmt_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      postId,
+      authorId: user.id,
+      authorName: user.name,
+      authorAvatar: user.avatarId,
+      authorCustomAvatar: user.customAvatarUrl,
+      content: trimmed,
+      createdAt: Date.now(),
+    };
+
+    setFeedPosts((prev) =>
+      prev.map((p) => {
+        if (p.id !== postId) return p;
+        const currentComments = p.comments || [];
+        return {
+          ...p,
+          comments: [...currentComments, newComment],
+          commentsCount: (p.commentsCount || 0) + 1,
+        };
+      })
+    );
+
+    try {
+      const postRef = doc(db, 'posts', postId);
+      const postSnap = await getDoc(postRef);
+      if (postSnap.exists()) {
+        const data = postSnap.data();
+        const existingComments = data.comments || [];
+        await updateDoc(postRef, {
+          comments: [...existingComments, cleanForFirestore(newComment)],
+          commentsCount: (data.commentsCount || 0) + 1,
+        });
+      }
+      showToast('Comment added!', 'success');
+    } catch (err) {
+      console.warn('Error saving comment to Firestore:', err);
+    }
+  }, [showToast]);
 
   // Ref to track marked read message IDs
   const markedReadRef = useRef<Set<string>>(new Set());
@@ -2516,8 +2607,13 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setShowMediaHubModal,
         showSettingsModal,
         setShowSettingsModal,
+        showNotificationModal,
+        setShowNotificationModal,
         feedPosts,
         addFeedPost,
+        editFeedPost,
+        deleteFeedPost,
+        addPostComment,
         toggleLikePost,
         toggleSavePost,
         triggerConfetti,

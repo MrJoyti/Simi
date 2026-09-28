@@ -13,6 +13,9 @@ import {
   Bookmark,
   MoreHorizontal,
   Image as ImageIcon,
+  Edit2,
+  Trash2,
+  Send,
 } from 'lucide-react';
 import { sounds } from '../utils/sound';
 import { canViewerAccessUserContent } from '../utils/presence';
@@ -30,6 +33,9 @@ export const VerseView: React.FC = () => {
     setShowProfileModal,
     setSelectedProfileUser,
     feedPosts,
+    editFeedPost,
+    deleteFeedPost,
+    addPostComment,
     toggleLikePost,
     toggleSavePost,
     setShowCreatePostModal,
@@ -37,11 +43,24 @@ export const VerseView: React.FC = () => {
     simiTheme,
     notificationPermission,
     enablePushNotifications,
+    setShowNotificationModal,
+    buddyRequests,
   } = useChat();
 
   const isMale = simiTheme.isMale;
   const [activeStoryIndex, setActiveStoryIndex] = useState<number | null>(null);
   const [verseTab, setVerseTab] = useState<'for_you' | 'following' | 'explore'>('for_you');
+
+  // Post actions & comments state
+  const [openPostMenuId, setOpenPostMenuId] = useState<string | null>(null);
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState<string>('');
+  const [activeCommentsPostId, setActiveCommentsPostId] = useState<string | null>(null);
+  const [commentInput, setCommentInput] = useState<string>('');
+
+  const hasIncomingRequests = useMemo(() => {
+    return buddyRequests.some((r) => r.toUserId === currentUser?.id && r.status === 'pending');
+  }, [buddyRequests, currentUser?.id]);
 
   // Handle global scroll to top event from bottom navigation
   React.useEffect(() => {
@@ -212,31 +231,24 @@ export const VerseView: React.FC = () => {
             </button>
 
             <button
-              onClick={async () => {
+              onClick={() => {
                 sounds.playClick();
-                if (notificationPermission !== 'granted') {
-                  const res = await enablePushNotifications();
-                  if (res === 'granted') {
-                    showToast('Push notifications enabled successfully! 🔔', 'success');
-                  } else if (res === 'denied') {
-                    showToast('Notifications blocked. Enable them in browser site settings.', 'warning');
-                  }
-                } else {
-                  showToast('Push notifications are active for all messages and calls.', 'info');
-                }
+                setShowNotificationModal(true);
               }}
               className={`w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-95 relative ${
                 isMale
                   ? 'bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700'
                   : 'bg-pink-50/80 border border-pink-100 text-slate-600 hover:text-rose-500 hover:bg-pink-100'
               }`}
-              title={notificationPermission === 'granted' ? 'Notifications active' : 'Enable notifications'}
+              title="Notifications"
               aria-label="Notifications"
             >
               <Bell className="w-4 h-4" />
-              {notificationPermission !== 'granted' && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-blue-500 animate-pulse ring-2 ring-slate-900" />
-              )}
+              {hasIncomingRequests ? (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 animate-pulse ring-2 ring-slate-900" />
+              ) : notificationPermission !== 'granted' ? (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-blue-500 ring-2 ring-slate-900" />
+              ) : null}
             </button>
 
             <button
@@ -483,21 +495,128 @@ export const VerseView: React.FC = () => {
                   </div>
                 </div>
 
-                <button
-                  onClick={() => sounds.playClick()}
-                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-200 transition-colors"
-                >
-                  <MoreHorizontal className="w-4 h-4" />
-                </button>
+                <div className="relative">
+                  <button
+                    onClick={() => {
+                      sounds.playClick();
+                      setOpenPostMenuId(openPostMenuId === post.id ? null : post.id);
+                    }}
+                    className="p-1.5 rounded-xl text-slate-400 hover:text-slate-200 transition-colors"
+                  >
+                    <MoreHorizontal className="w-4 h-4" />
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {openPostMenuId === post.id && (
+                    <div
+                      className={`absolute right-0 top-8 z-20 w-40 rounded-2xl border shadow-xl p-1.5 space-y-1 animate-in fade-in zoom-in-95 ${
+                        isMale
+                          ? 'bg-[#111827] border-slate-800 text-slate-200'
+                          : 'bg-white border-pink-100 text-slate-700 shadow-md'
+                      }`}
+                    >
+                      {post.authorId === currentUser?.id ? (
+                        <>
+                          <button
+                            onClick={() => {
+                              sounds.playClick();
+                              setEditingPostId(post.id);
+                              setEditContent(post.content);
+                              setOpenPostMenuId(null);
+                            }}
+                            className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-colors ${
+                              isMale ? 'hover:bg-slate-800 text-blue-300' : 'hover:bg-pink-50 text-rose-600'
+                            }`}
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                            <span>Edit Post</span>
+                          </button>
+                          <button
+                            onClick={async () => {
+                              sounds.playClick();
+                              setOpenPostMenuId(null);
+                              if (window.confirm('Are you sure you want to delete this post?')) {
+                                await deleteFeedPost(post.id);
+                              }
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-rose-500 hover:bg-rose-500/10 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete Post</span>
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => {
+                              sounds.playClick();
+                              navigator.clipboard.writeText(post.content);
+                              showToast('Post text copied!', 'success');
+                              setOpenPostMenuId(null);
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold hover:bg-slate-800/40 transition-colors"
+                          >
+                            <Share2 className="w-3.5 h-3.5" />
+                            <span>Copy Text</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              sounds.playClick();
+                              showToast('Post reported to moderation team.', 'info');
+                              setOpenPostMenuId(null);
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-amber-500 hover:bg-amber-500/10 transition-colors"
+                          >
+                            <span>Report</span>
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* Post Content */}
-              {post.content && (
-                <div className="px-4 pb-3">
-                  <p className={`text-xs leading-relaxed ${isMale ? 'text-slate-200' : 'text-slate-700'}`}>
-                    {post.content}
-                  </p>
+              {/* Post Content or Edit Form */}
+              {editingPostId === post.id ? (
+                <div className="px-4 pb-3 space-y-2">
+                  <textarea
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    rows={3}
+                    className={`w-full p-3 rounded-2xl border text-xs focus:outline-none resize-none ${
+                      isMale
+                        ? 'bg-slate-950 border-slate-700 text-slate-100 focus:border-cyan-500'
+                        : 'bg-pink-50/50 border-pink-200 text-slate-800 focus:border-rose-400'
+                    }`}
+                  />
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => setEditingPostId(null)}
+                      className={`px-3 py-1 rounded-xl text-xs font-bold border ${
+                        isMale ? 'border-slate-700 text-slate-400' : 'border-slate-200 text-slate-500'
+                      }`}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={async () => {
+                        await editFeedPost(post.id, editContent);
+                        setEditingPostId(null);
+                      }}
+                      className="px-3.5 py-1 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-xs"
+                    >
+                      Save
+                    </button>
+                  </div>
                 </div>
+              ) : (
+                post.content && (
+                  <div className="px-4 pb-3">
+                    <p className={`text-xs leading-relaxed ${isMale ? 'text-slate-200' : 'text-slate-700'}`}>
+                      {post.content}
+                    </p>
+                  </div>
+                )
               )}
 
               {/* Post Image (if any) */}
@@ -535,12 +654,16 @@ export const VerseView: React.FC = () => {
                   <button
                     onClick={() => {
                       sounds.playClick();
-                      showToast('Comments coming soon!', 'info');
+                      setActiveCommentsPostId(activeCommentsPostId === post.id ? null : post.id);
                     }}
-                    className="flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-slate-200 transition-colors"
+                    className={`flex items-center gap-1.5 text-xs font-bold transition-colors ${
+                      activeCommentsPostId === post.id
+                        ? isMale ? 'text-blue-400' : 'text-rose-500'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
                   >
                     <MessageCircle className="w-4 h-4" />
-                    <span>{post.commentsCount}</span>
+                    <span>{post.commentsCount || (post.comments ? post.comments.length : 0)}</span>
                   </button>
 
                   <button
@@ -567,6 +690,98 @@ export const VerseView: React.FC = () => {
                   <Bookmark className={`w-4 h-4 ${post.isSaved ? (isMale ? 'fill-cyan-400' : 'fill-rose-500') : ''}`} />
                 </button>
               </div>
+
+              {/* Expandable Comments Section */}
+              {activeCommentsPostId === post.id && (
+                <div
+                  className={`border-t px-4 py-3 space-y-3 animate-in fade-in duration-150 ${
+                    isMale
+                      ? 'border-slate-800/80 bg-slate-950/60'
+                      : 'border-pink-100 bg-[#FFF7F9]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-xs font-bold">
+                    <span className={isMale ? 'text-slate-300' : 'text-slate-700'}>
+                      Comments ({post.comments ? post.comments.length : 0})
+                    </span>
+                    <button
+                      onClick={() => setActiveCommentsPostId(null)}
+                      className="text-[10px] text-slate-400 hover:underline"
+                    >
+                      Hide
+                    </button>
+                  </div>
+
+                  {/* Comments list */}
+                  <div className="space-y-2.5 max-h-48 overflow-y-auto pr-1">
+                    {(!post.comments || post.comments.length === 0) ? (
+                      <p className="text-xs text-slate-400 py-2 text-center">
+                        No comments yet. Write the first thought! 💬
+                      </p>
+                    ) : (
+                      post.comments.map((cmt) => (
+                        <div key={cmt.id} className="flex items-start gap-2.5">
+                          <CuteAvatar
+                            id={cmt.authorAvatar || 'bunny'}
+                            customUrl={cmt.authorCustomAvatar}
+                            size="sm"
+                            className="shrink-0"
+                          />
+                          <div
+                            className={`flex-1 p-2.5 rounded-2xl text-xs ${
+                              isMale ? 'bg-slate-900/80 text-slate-200' : 'bg-white text-slate-800 shadow-2xs'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-2 mb-0.5">
+                              <span className="font-bold text-[11px]">{cmt.authorName}</span>
+                              <span className="text-[9px] text-slate-400">
+                                {new Date(cmt.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            <p className="text-[11px] leading-relaxed">{cmt.content}</p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Comment Input */}
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="text"
+                      value={commentInput}
+                      onChange={(e) => setCommentInput(e.target.value)}
+                      onKeyDown={async (e) => {
+                        if (e.key === 'Enter' && commentInput.trim()) {
+                          await addPostComment(post.id, commentInput);
+                          setCommentInput('');
+                        }
+                      }}
+                      placeholder="Write a comment..."
+                      className={`flex-1 px-3.5 py-2 rounded-2xl text-xs focus:outline-none transition-all ${
+                        isMale
+                          ? 'bg-slate-900 border border-slate-800 text-slate-100 placeholder-slate-500 focus:border-blue-500'
+                          : 'bg-white border border-pink-200 text-slate-800 placeholder-slate-400 focus:border-rose-400 shadow-2xs'
+                      }`}
+                    />
+                    <button
+                      onClick={async () => {
+                        if (commentInput.trim()) {
+                          await addPostComment(post.id, commentInput);
+                          setCommentInput('');
+                        }
+                      }}
+                      disabled={!commentInput.trim()}
+                      className={`p-2 rounded-2xl text-white shadow-xs transition-transform active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed ${
+                        isMale ? 'bg-blue-600 hover:bg-blue-500' : 'bg-rose-500 hover:bg-rose-600'
+                      }`}
+                      title="Post comment"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </article>
           ))
         )}

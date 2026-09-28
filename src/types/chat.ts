@@ -220,6 +220,17 @@ export interface ScheduledMessage {
   replyTo?: MessageReplyTo;
 }
 
+export interface PostComment {
+  id: string;
+  postId: string;
+  authorId: string;
+  authorName: string;
+  authorAvatar: string;
+  authorCustomAvatar?: string;
+  content: string;
+  createdAt: number;
+}
+
 export interface SocialFeedPost {
   id: string;
   authorId: string;
@@ -227,6 +238,7 @@ export interface SocialFeedPost {
   authorAvatar: string;
   authorCustomAvatar?: string;
   createdAt: number;
+  updatedAt?: number;
   timeAgo: string;
   location?: string;
   isPublic?: boolean;
@@ -237,6 +249,7 @@ export interface SocialFeedPost {
   sharesCount: number;
   isLiked?: boolean;
   isSaved?: boolean;
+  comments?: PostComment[];
 }
 
 export interface HighlightItem {
